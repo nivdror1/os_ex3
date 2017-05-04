@@ -6,9 +6,17 @@
 #define OS_EX3_STRINGCONTAINERS_H
 
 #include "MapReduceClient.h"
+#include <string>
 class StringContainers :public k1Base,public k2Base, public k3Base, public v1Base{
 private:
 	String data;
+
+public:
+	StringContainers(std::string data): data(data){}
+
+	virtual ~StringContainers() {}
+
+	std::string getData() const ;
 
 };
 
