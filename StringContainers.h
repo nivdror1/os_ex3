@@ -7,16 +7,49 @@
 
 #include "MapReduceClient.h"
 #include <string>
-class StringContainers :public k1Base,public k2Base, public k3Base, public v1Base{
+class StringContainers :public k1Base, public k2Base,  public k3Base, public v1Base{
 private:
-	String data;
+	std::string data;
 
 public:
+	/**
+	 * a constructor
+	 * @param newValue the value
+	 * @return an instance of the class
+	 */
 	StringContainers(std::string data): data(data){}
 
+	/**
+	 * d-tor
+	 */
 	virtual ~StringContainers() {}
 
+	/**
+	 * get the data
+	 * @return return the data
+	 */
 	std::string getData() const ;
+
+	/**
+	 * overloaing the operator <
+	 * @param other k1base instance to be compared
+	 * @return a boolean according to the result
+	 */
+	bool operator<(const k1Base &other) const override ;
+
+	/**
+	 * overloaing the operator <
+	 * @param other k2base instance to be compared
+	 * @return a boolean according to the result
+	 */
+	bool operator<(const k2Base &other) const override ;
+
+	/**
+	 * overloaing the operator <
+	 * @param other k3base instance to be compared
+	 * @return a boolean according to the result
+	 */
+	bool operator<(const k3Base &other) const override ;
 
 };
 

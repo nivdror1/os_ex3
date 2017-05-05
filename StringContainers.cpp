@@ -4,12 +4,45 @@
 
 #include "StringContainers.h"
 
+/**
+ * get the data
+ * @return return the data
+ */
 std::string StringContainers::getData() const
 {
-    return data;
+    return this->data;
 }
 
+/**
+ * overloaing the operator <
+ * @param other k1base instance to be compared
+ * @return a boolean according to the result
+ */
 bool StringContainers::operator<(const k1Base &other) const
 {
-    return this.getData() < (StringContainers)other.getData();
+    StringContainers& key=(StringContainers &)other;
+    return this->getData() < key.getData();
 }
+
+/**
+ * overloaing the operator <
+ * @param other k2base instance to be compared
+ * @return a boolean according to the result
+ */
+bool StringContainers::operator<(const k2Base &other) const
+{
+    StringContainers& key=(StringContainers &)other;
+    return this->getData() < key.getData();
+}
+
+/**
+ * overloaing the operator <
+ * @param other k3base instance to be compared
+ * @return a boolean according to the result
+ */
+bool StringContainers::operator<(const k3Base &other) const
+{
+    StringContainers& key=(StringContainers &)other;
+    return this->getData() < key.getData();
+}
+
