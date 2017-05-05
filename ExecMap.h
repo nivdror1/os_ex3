@@ -24,7 +24,7 @@ private:
 
     pthread_t _thread;
 
-    void mapAll();
+    static void* mapAll(void*);
 
 public:
 
