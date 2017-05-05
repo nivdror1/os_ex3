@@ -14,7 +14,7 @@ IntegerContainers::IntegerContainers(int newValue):
 /**
  * d-tor
  */
-~IntegerContainers(){
+IntegerContainers::~IntegerContainers(){
 	this->value=0;
 }
 
