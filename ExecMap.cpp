@@ -4,9 +4,9 @@
 
 #include "ExecMap.h"
 
-void ExecMap::mapAll()
+void* ExecMap::mapAll(void*)
 {
-    // lock and unlock the pTC mute
+    // lock and unlock the pTC mutex
 }
 
 ExecMap::ExecMap(int threadId, mappingFunction map): _threadId(threadId), _map(map)
