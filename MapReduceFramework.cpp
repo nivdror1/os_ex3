@@ -1,6 +1,4 @@
 #include "MapReduceFramework.h"
-#include <p_thread>
-
 void init(int numThread){
 
 }
