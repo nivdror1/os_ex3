@@ -2,11 +2,12 @@
 #include <pthread.h>
 #include <ExecMap.h>
 #include <ExecReduce.h>
+#include <map>
 #include "Shuffle.h"
 #include "ExecMap.h"
 
 
-typedef std::vector<Map_Vec*> PTC;
+typedef std::map<pthread_t,Map_Vec*> PTC;
 
 std::vector<ExecMap*> execMapVector;
 Shuffle * shuffle;
@@ -22,16 +23,13 @@ pthread_mutex_t pthreadToContainerMutex;
 void init(int numThread,MapReduceBase& mapReduce){
 	//lock the pthreadToContainer
 	pthread_mutex_lock(&pthreadToContainerMutex);
-	//spawn the new threads
+	//spawn the new threads and initiate the vector pthreadToContainer
 	for(int i=0;i<numThread;i++){
 		execMapVector[i] =  new ExecMap(i,mapReduce.Map);
+		pthreadToContainer[execMapVector[i]->getSelf()]=execMapVector[i]->getPastMapVector();
  	}
 	shuffle= new Shuffle();
 
-	//initiate the vector pthreadToContainer
-	for(int j=0;j<numThread;j++){
-		pthreadToContainer[j]=execMapVector[j]->getPastMapVector();
-	}
 	//unlock the pthreadToContainer
 	pthread_mutex_unlock(&pthreadToContainerMutex);
 
