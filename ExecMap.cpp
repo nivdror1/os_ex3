@@ -6,7 +6,7 @@
 
 void ExecMap::mapAll()
 {
-    // lock and unlock the pTC mutex
+    // lock and unlock the pTC mute
 }
 
 ExecMap::ExecMap(int threadId, mappingFunction map): _threadId(threadId), _map(map)
