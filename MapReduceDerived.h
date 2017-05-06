@@ -16,7 +16,7 @@ class MapReduceDerived: public MapReduceBase {
 
 public:
 	/**
-	 * constructor
+	 * a constructor
 	 */
     MapReduceDerived();
 

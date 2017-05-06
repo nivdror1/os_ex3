@@ -64,7 +64,7 @@ void isDirectory(IN_ITEMS_VEC &inputVector, StringContainers *keyWord,char* path
 											  new StringContainers(paths[i])));
 			}
 		}
-		//todo i am not sure if there shouldn't be error message
+		//todo i'm not sure if there shouldn't be error message
 	}
 }
 

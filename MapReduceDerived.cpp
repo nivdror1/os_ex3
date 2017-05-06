@@ -38,7 +38,7 @@ void MapReduceDerived::Map(const k1Base *const key, const v1Base *const val) con
 		}
 		closedir(dir); //TODO close the folder?
 	}else{
-		//TODO close the folder?
+		//TODO close the folder ?
 		std::cerr<<"System call error: could not open the directory"<<std::endl;
 	}
 }
