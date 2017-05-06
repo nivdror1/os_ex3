@@ -31,21 +31,21 @@ public:
 	std::string getData() const ;
 
 	/**
-	 * overloaing the operator <
+	 * overloading the operator <
 	 * @param other k1base instance to be compared
 	 * @return a boolean according to the result
 	 */
 	bool operator<(const k1Base &other) const override ;
 
 	/**
-	 * overloaing the operator <
+	 * overloading the operator <
 	 * @param other k2base instance to be compared
 	 * @return a boolean according to the result
 	 */
 	bool operator<(const k2Base &other) const override ;
 
 	/**
-	 * overloaing the operator <
+	 * overloading the operator <
 	 * @param other k3base instance to be compared
 	 * @return a boolean according to the result
 	 */

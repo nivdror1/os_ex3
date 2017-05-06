@@ -14,7 +14,7 @@ std::string StringContainers::getData() const
 }
 
 /**
- * overloaing the operator <
+ * overloading the operator <
  * @param other k1base instance to be compared
  * @return a boolean according to the result
  */
@@ -25,7 +25,7 @@ bool StringContainers::operator<(const k1Base &other) const
 }
 
 /**
- * overloaing the operator <
+ * overloading the operator <
  * @param other k2base instance to be compared
  * @return a boolean according to the result
  */
@@ -36,7 +36,7 @@ bool StringContainers::operator<(const k2Base &other) const
 }
 
 /**
- * overloaing the operator <
+ * overloading the operator <
  * @param other k3base instance to be compared
  * @return a boolean according to the result
  */
