@@ -20,7 +20,7 @@ private:
 
     Map_Vec _mappingPairs;
 
-    mappingFunction _map;
+    MapReduceBase* _map;
 
     pthread_t _thread;
 
@@ -28,9 +28,11 @@ private:
 
 public:
 
-    ExecMap(int threadId, mappingFunction map);
+    ExecMap(int threadId, MapReduceBase* map);
 
     Map_Vec* getPastMapVector();
+
+    pthread_t getSelf();
 
 };
 
