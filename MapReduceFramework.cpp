@@ -11,26 +11,7 @@ std::vector<ExecMap*> execMapVector;
 Shuffle * shuffle;
 PTC pthreadToContainer;
 
-/**
- * a struct of resources for the ExecMap objects
- */
-struct Resources{
-	/** a mutex on the pthreadToCotnainer*/
-	pthread_mutex_t pthreadToContainerMutex;
 
-	/** a mutex on the inputVectorIndexMutex*/
-	pthread_mutex_t inputVectorIndexMutex;
-
-	/** the input vector that was given in the runMapReduceFramework*/
-	IN_ITEMS_VEC inputVector;
-
-	/** the index of current location in the input vector*/
-	int inputVectorIndex=0;
-
-	/** an object of mapReduce which contain the map function*/
-	MapReduceBase mapReduce;
-
-}resources;
 
 /**
  * initiate the threads of the mapping and shuffling, and also initiate the
@@ -48,8 +29,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	for(int i=0;i<numThread;i++){
         // maybe give up on execMapVector and make pTC vector of <thread_self, ExecMap*>
 		execMapVector[i] =  new ExecMap(&mapReduce,itemsVec,inputVectorIndex);
-		pthreadToContainer.push_back(std::make_pair(execMapVector[i]->getSelf()
-                                                       ,new ExecMap(&mapReduce,itemsVec,inputVectorIndex)));
+
  	}
 	shuffle= new Shuffle();
 
