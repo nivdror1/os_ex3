@@ -20,7 +20,8 @@ void* ExecMap::mapAll(void*)
         resources.inputVectorIndex += CHUNK_SIZE;
         pthread_mutex_unlock(&resources.inputVectorIndexMutex);
 
-        if (chunkStartingIndex >= resources.inputVector.size()){
+        if (chunkStartingIndex >= resources.inputVector.size())
+        {
             break;
         }
         numberOfIterations = std::min(chunkStartingIndex + CHUNK_SIZE,
@@ -42,6 +43,11 @@ ExecMap::ExecMap()
 Map_Vec* ExecMap::getPastMapVector()
 {
     return &_mappingPairs;
+}
+
+unsigned long ExecMap::getVectorSize()
+{
+    return _mappingPairs.size();
 }
 
 pthread_t ExecMap::getSelf()

@@ -33,7 +33,6 @@ struct Resources{
 
 }resources;
 
-typedef void (*mappingFunction)(const k1Base *const, const v1Base *const );
 
 typedef std::vector<std::pair<k2Base*, v2Base*>> Map_Vec;
 
@@ -51,7 +50,11 @@ public:
 
     ExecMap();
 
+	~ExecMap() {}
+
     Map_Vec* getPastMapVector();
+
+	unsigned long getVectorSize();
 
     pthread_t getSelf();
 

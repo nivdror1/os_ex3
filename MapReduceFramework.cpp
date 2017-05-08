@@ -40,7 +40,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 		execMapVector[i] =  new ExecMap();
 		pthread_mutex_t mapContainerMutex;
 		pthread_mutex_init(&mapContainerMutex,NULL); //todo check if there are errors of the functions
-		mutexVector.push_back(mapContainerMutex);
+		mutexVector.push_back(&mapContainerMutex);
 
  	}
 	shuffle= new Shuffle(semShuffle,execMapVector, mutexVector, itemsVec.size());
@@ -55,4 +55,21 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
                                     int multiThreadLevel, bool autoDeleteV2K2){
 
 	init(multiThreadLevel,mapReduce,itemsVec);
+}
+
+
+void Emit2 (k2Base* key, v2Base* value)
+{
+	pthread_t currentThreadId = pthread_self();
+	for (int i = 0; i < execMapVector.size(); ++i)
+	{
+		if (execMapVector[i]->getSelf() == currentThreadId)
+		{
+			pthread_mutex_lock(mutexVector.at(i));
+			execMapVector[i]->addToMappingVector(std::make_pair(key, value));
+			pthread_mutex_unlock(mutexVector.at(i));
+			break;
+		}
+	}
+	sem_post(&semShuffle);
 }
