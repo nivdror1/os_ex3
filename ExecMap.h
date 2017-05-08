@@ -8,6 +8,10 @@
 #include <pthread.h>
 #include "MapReduceClient.h"
 
+typedef std::pair<k1Base*, v1Base*> IN_ITEM;
+
+typedef std::vector<IN_ITEM> IN_ITEMS_VEC;
+
 /**
  * a struct of resources for the ExecMap objects
  */
@@ -25,7 +29,7 @@ struct Resources{
 	int inputVectorIndex=0;
 
 	/** an object of mapReduce which contain the map function*/
-	MapReduceBase mapReduce;
+	MapReduceBase* mapReduce;
 
 }resources;
 
@@ -37,11 +41,7 @@ typedef std::vector<std::pair<k2Base*, v2Base*>> Map_Vec;
 class ExecMap {
 private:
 
-    int _threadId;
-
     Map_Vec _mappingPairs;
-
-    MapReduceBase* _map;
 
     pthread_t _thread;
 
@@ -49,11 +49,13 @@ private:
 
 public:
 
-    ExecMap(int threadId, MapReduceBase* map);
+    ExecMap();
 
     Map_Vec* getPastMapVector();
 
     pthread_t getSelf();
+
+    void addToMappingVector(std::pair<k2Base *, v2Base *> newPair);
 
 };
 
