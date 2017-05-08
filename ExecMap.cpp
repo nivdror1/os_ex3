@@ -36,7 +36,7 @@ void* ExecMap::mapAll(void*)
 
 ExecMap::ExecMap()
 {
-    int error = pthread_create(&_thread, NULL, mapAll, NULL);
+    int error = pthread_create(&_thread, NULL, mapAll, NULL); //todo error?
 }
 
 Map_Vec* ExecMap::getPastMapVector()

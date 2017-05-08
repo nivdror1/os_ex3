@@ -12,7 +12,7 @@ std::vector<ExecMap*> execMapVector;
 Shuffle * shuffle;
 PTC pthreadToContainer;
 sem_t semShuffle;
-std::vector<pthread_mutex_t> mutexVector;
+std::vector<pthread_mutex_t*> mutexVector;
 
 
 
@@ -42,9 +42,8 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 		pthread_mutex_init(&mapContainerMutex,NULL); //todo check if there are errors of the functions
 		mutexVector.push_back(mapContainerMutex);
 
-
  	}
-	shuffle= new Shuffle();
+	shuffle= new Shuffle(semShuffle,execMapVector, mutexVector, itemsVec.size());
 
 	//unlock the pthreadToContainer
 	pthread_mutex_unlock(&resources.pthreadToContainerMutex);
