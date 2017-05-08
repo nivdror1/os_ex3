@@ -15,7 +15,7 @@ typedef std::vector<IN_ITEM> IN_ITEMS_VEC;
 /**
  * a struct of resources for the ExecMap objects
  */
-struct Resources{
+struct MapResources{
 	/** a mutex on the pthreadToCotnainer*/
 	pthread_mutex_t pthreadToContainerMutex;
 
