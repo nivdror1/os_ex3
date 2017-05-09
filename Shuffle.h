@@ -43,13 +43,16 @@ private:
 	/** the number of pair being shuffled*/
 	int numOfPairs;
 
+    /** a vector of indexes that specify where the shuffle is in the passing through the container*/
+    std::vector<int> mapContainerIndex;
+
 	 //todo need to send this also the framework
 
 public:
 	/**
 	 * c-tor
 	 * */
-	Shuffle(unsigned int numInput);
+	Shuffle(unsigned int numInput,int numberOfThreads);
 
     /**
      * d-tor

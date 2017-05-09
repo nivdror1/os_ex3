@@ -9,8 +9,11 @@
 /**
  * c-tor
  * */
-Shuffle::Shuffle(unsigned int numInput ): numOfPairs(numInput)
+Shuffle::Shuffle(unsigned int pairsNum, int numOfThreads ): numOfPairs(pairsNum)
 {
+    for (int i = 0 ; i < numOfThreads;i++){
+        this->mapContainerIndex.push_back(0);
+    }
 	int error = pthread_create(&_thread, NULL, shuffleAll, NULL); //todo error?
 }
 /**
@@ -40,6 +43,7 @@ static void searchingAndInsertingData(k2Base* key, v2Base* value){
  * @param pairsShuffled the number of the pairs that had been shuffled
  */
 static void shufflingDataFromAContainer(unsigned int i, int pairsShuffled){
+
     for(unsigned int j= 0 ;j<shuffleResources.execMapVector.at(i)->getVectorSize();j++) {
 
         k2Base *key = shuffleResources.execMapVector.at(i)->getPastMapVector()->at(j).first;
