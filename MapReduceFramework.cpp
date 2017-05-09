@@ -38,7 +38,7 @@ struct ShuffleResources{
 	pthread_t shuffleThread;
 
 	/** the number of pair that need to be shuffled*/
-	int numOfPairs;
+	unsigned long numOfPairs;
 
 	/** a vector of indexes that specify where the shuffle is in the passing through the container*/
 	std::vector<unsigned int> mapContainerIndex;
@@ -46,7 +46,7 @@ struct ShuffleResources{
 }shuffleResources;
 
 
-void shuffleThreadInit(int numOfThreads, unsigned int numOfPairs){
+void shuffleThreadInit(int numOfThreads, unsigned long numOfPairs){
 	for (int i = 0 ; i < numOfThreads;i++){
 		shuffleResources.mapContainerIndex.push_back(0);
 	}
@@ -65,10 +65,10 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	int error = sem_init(shuffleResources.shuffleSemaphore,0,1); //todo error
 
 	//update  map resources
-	pthread_mutex_init(&resources.inputVectorIndexMutex,NULL);
-	pthread_mutex_init(&resources.pthreadToContainerMutex,NULL);
-	resources.inputVector=itemsVec;
-	resources.mapReduce = &mapReduceBase;
+	pthread_mutex_init(&mapResources.inputVectorIndexMutex,NULL);
+	pthread_mutex_init(&mapResources.pthreadToContainerMutex,NULL);
+    mapResources.inputVector=itemsVec;
+    mapResources.mapReduce = &mapReduceBase;
 
 	pthread_mutex_init(outputVectorMutex,NULL);
 
