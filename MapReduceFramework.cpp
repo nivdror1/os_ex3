@@ -23,7 +23,7 @@ PTC pthreadToContainer;
  */
 void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	//initiate the semaphore
-	sem_init(shuffleResources.shuffleSemaphore,0,0);
+	sem_init(shuffleResources.shuffleSemaphore,0,1);
 
 	//update resources
 	pthread_mutex_init(&resources.inputVectorIndexMutex,NULL);
@@ -42,7 +42,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 		shuffleResources.mutexVector.push_back(&mapContainerMutex);
 
  	}
-	shuffle= new Shuffle(itemsVec.size());
+	shuffle= new Shuffle(itemsVec.size(),numThread);
 
 	//unlock the pthreadToContainer
 	pthread_mutex_unlock(&resources.pthreadToContainerMutex);

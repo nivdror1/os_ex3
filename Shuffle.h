@@ -40,13 +40,26 @@ private:
 	/** the thread*/
 	pthread_t _thread;
 
-	/** the number of pair being shuffled*/
+	/** the number of pair that need to be shuffled*/
 	int numOfPairs;
 
     /** a vector of indexes that specify where the shuffle is in the passing through the container*/
-    std::vector<int> mapContainerIndex;
+    std::vector<unsigned int> mapContainerIndex;
 
-	 //todo need to send this also the framework
+	/**
+	* search the key, if it is in the map append the value to the vector,
+	* else add a new pair to the map (key,value)
+	* @param key the key on which to search
+	* @param value the data that need to append
+	*/
+	void searchingAndInsertingData(k2Base* key, v2Base* value, unsigned int &pairsShuffled);
+
+	/**
+	* shuffle data from a container
+	* @param i the index of the execMap container
+	* @param pairsShuffled the number of the pairs that had been shuffled
+	*/
+	void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled);
 
 public:
 	/**
