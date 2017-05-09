@@ -39,6 +39,8 @@ struct ReduceResources{
 }reduceResources;
 
 
+typedef std::vector<std::pair<k3Base*, v3Base*>> Reduce_Vec;
+
 
 class ExecReduce {
 private:
