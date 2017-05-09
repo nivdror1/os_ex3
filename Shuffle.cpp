@@ -49,18 +49,24 @@ Shuffle::Shuffle(unsigned int pairsNum, int numOfThreads ): numOfPairs(pairsNum)
  */
  void Shuffle::shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
 
+	//going through the execMapVector
     while(mapContainerIndex[i] > shuffleResources.execMapVector.at(i)->getVectorSize()) {
 	    unsigned int index= mapContainerIndex[i];
 
+	    //lock the mutex of the container
 	    pthread_mutex_lock(shuffleResources.mutexVector[i]);
 
+	    //get the value from the container
 	    k2Base *key = shuffleResources.execMapVector.at(i)->getPastMapVector()->at(index).first;
         v2Base *value = shuffleResources.execMapVector.at(i)->getPastMapVector()->at(index).second;
 
+	    //unlock the mutex of the container
 	    pthread_mutex_unlock(shuffleResources.mutexVector[i]);
 
+	    //increase the index value of the specific map container
 	    this->mapContainerIndex[i]+=1;
 
+	    // insert the pair into the shuffle container
         searchingAndInsertingData(key,value,pairsShuffled);
 
     }
