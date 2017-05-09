@@ -31,7 +31,7 @@ struct ReduceResources{
     /** an object of mapReduce which contain the map function*/
     MapReduceBase* mapReduce;
 
-}resources;
+}ReduceResources;
 
 
 typedef std::vector<std::pair<k3Base*, v3Base*>> Reduce_Vec;

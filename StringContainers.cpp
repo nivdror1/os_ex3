@@ -20,7 +20,7 @@ std::string StringContainers::getData() const
  */
 bool StringContainers::operator<(const k1Base &other) const
 {
-    StringContainers& key=(StringContainers &)other;
+    StringContainers &key=(StringContainers &)other;
     return this->getData() < key.getData();
 }
 
