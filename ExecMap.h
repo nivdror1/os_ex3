@@ -31,7 +31,7 @@ struct MapResources{
 	/** an object of mapReduce which contain the map function*/
 	MapReduceBase* mapReduce;
 
-}resources;
+}mapResources;
 
 
 typedef std::vector<std::pair<k2Base*, v2Base*>> Map_Vec;
@@ -40,24 +40,54 @@ typedef std::vector<std::pair<k2Base*, v2Base*>> Map_Vec;
 class ExecMap {
 private:
 
+	/* vector of pairs after the mapping action */
     Map_Vec _mappingPairs;
 
+	/* the thread that actually runs */
     pthread_t _thread;
 
+	/**
+	 * mapping function that the thread actually runs, gets chuncks of pairs from input vector and
+	 * mapping them according to the given map function
+	 * @return
+	 */
     static void* mapAll(void*);
 
 public:
 
+    /**
+     * a constructor
+	 * @return an instance of the class
+     */
     ExecMap();
 
+    /**
+	 * d-tor
+	 */
 	~ExecMap() {}
 
+    /**
+     * returns pointer to a vector contains all thread mapping pairs
+     * @return pointer to a vector contains all thread mapping pairs
+     */
     Map_Vec* getPastMapVector();
 
+    /**
+     * returns size of pairs vector
+     * @return
+     */
 	unsigned long getVectorSize();
 
+    /**
+     * returns thread id
+     * @return thread id
+     */
     pthread_t getSelf();
 
+    /**
+     * gets new pair of values after mapping and add it to pairs vector
+     * @param newPair
+     */
     void addToMappingVector(std::pair<k2Base *, v2Base *> newPair);
 
 };

@@ -26,13 +26,13 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	sem_init(shuffleResources.shuffleSemaphore,0,1);
 
 	//update resources
-	pthread_mutex_init(&resources.inputVectorIndexMutex,NULL);
-	pthread_mutex_init(&resources.pthreadToContainerMutex,NULL);
-	resources.inputVector=itemsVec;
-	resources.mapReduce = &mapReduceBase;
+	pthread_mutex_init(&mapResources.inputVectorIndexMutex,NULL);
+	pthread_mutex_init(&mapResources.pthreadToContainerMutex,NULL);
+	mapResources.inputVector = itemsVec;
+	mapResources.mapReduce = &mapReduceBase;
 
 	//lock the pthreadToContainer
-	pthread_mutex_lock(&resources.pthreadToContainerMutex);
+	pthread_mutex_lock(&mapResources.pthreadToContainerMutex);
 	//spawn the new threads and initiate the vector pthreadToContainer
 	for(int i=0;i<numThread;i++){
         // maybe give up on execMapVector and make pTC vector of <thread_self, ExecMap*>
@@ -45,7 +45,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	shuffle= new Shuffle(itemsVec.size(),numThread);
 
 	//unlock the pthreadToContainer
-	pthread_mutex_unlock(&resources.pthreadToContainerMutex);
+	pthread_mutex_unlock(&mapResources.pthreadToContainerMutex);
 
 
 }
@@ -62,7 +62,6 @@ void Emit2 (k2Base* key, v2Base* value)
 	pthread_t currentThreadId = pthread_self();
 	for (int i = 0; i < shuffleResources.execMapVector.size(); ++i)
 	{
-		//todo ido notice that this is the way to compare between two pthread_t
 		if (pthread_equal(shuffleResources.execMapVector[i]->getSelf(),currentThreadId))
 		{
 			pthread_mutex_lock(shuffleResources.mutexVector.at(i));
