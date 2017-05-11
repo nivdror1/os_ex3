@@ -5,8 +5,12 @@
 #include <stdlib.h>
 #include <fstream>
 #include "semaphore.h"
+#include <time.h>
+#include <sys/time.h>
 
 #define CHUNK_SIZE 10
+#define SECONDS_TO_NANO_SECONDS 1000000000
+#define MICRO_SECONDS_TO_NANO_SECONDS 1000
 
 typedef std::vector<std::pair<k2Base*, v2Base*>> MAP_VEC;
 
@@ -39,7 +43,7 @@ MapReduceBase* mapReduce;
 sem_t *shuffleSemaphore;
 
 /** a vector which contain pointers to the mutex of execMap containers*/
-std::vector<pthread_mutex_t> mutexVector;
+std::vector<pthread_mutex_t*> mutexVector;
 
 /** the output vector of the shuffle process*/
 std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
@@ -48,11 +52,11 @@ std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
 OUT_ITEMS_VEC outputVector;
 
 /** mutex for the final output vector */
-pthread_mutex_t outputVectorMutex;
+pthread_mutex_t* outputVectorMutex;
 
 std::ofstream myLogFile;
 
-pthread_mutex_t logMutex;
+pthread_mutex_t* logMutex;
 
 
 /**
@@ -61,10 +65,10 @@ pthread_mutex_t logMutex;
 struct MapResources{
 
     /** a mutex on the pthreadToCotnainer*/
-    pthread_mutex_t pthreadToContainerMutex;
+    pthread_mutex_t* pthreadToContainerMutex;
 
     /** a mutex on the inputVectorIndexMutex*/
-    pthread_mutex_t inputVectorIndexMutex;
+    pthread_mutex_t* inputVectorIndexMutex;
 
     /** the input vector that was given in the runMapReduceFramework*/
     IN_ITEMS_VEC inputVector;
@@ -90,7 +94,7 @@ struct ShuffleResources{
 struct ReduceResources{
 
 	/** a mutex on the inputVectorIndexMutex*/
-	pthread_mutex_t shuffledVectorIndexMutex;
+	pthread_mutex_t *shuffledVectorIndexMutex;
 
 	/** the index of current location in the input vector*/
 	unsigned int shuffledVectorIndex=0;
@@ -105,6 +109,31 @@ void* mapAll(void*);
 void* shuffleAll(void*);
 
 void* reduceAll(void*);
+
+/**
+ * convert to nano second
+ * @param before the time before the operation
+ * @param after the time after the operation
+ * @return return the converted time
+ */
+inline double conversionToNanoSecond(timeval &before, timeval &after){
+	return ((after.tv_sec-before.tv_sec)*SECONDS_TO_NANO_SECONDS)
+	       +((after.tv_usec- before.tv_usec)*MICRO_SECONDS_TO_NANO_SECONDS);
+}
+
+/**
+ * get the date and time
+ * @return a string represntation of the date and time
+ */
+std::string getDateAndTime(){
+	time_t now= time(0);
+	struct tm  tstruct;
+	char buf[80];
+	tstruct = *localtime(&now);
+	strftime(buf, sizeof(buf), "%Y:%m:%d:%X", &tstruct);
+	std::string s=buf;
+	return s;
+}
 
 /**
  * create a non specific thread
@@ -123,8 +152,8 @@ void createThread(pthread_t &thread, void * function(void*)){
  * create a non specific mutex
  * @param mutex a mutex
  */
-void createMutex(pthread_mutex_t &mutex){
-	if(pthread_mutex_init(&mutex,NULL)!=0){
+void createMutex(pthread_mutex_t *mutex){
+	if(pthread_mutex_init(mutex,NULL)!=0){
 		std::cerr<<"mapReduceFramework failure: pthread_mutex_init failed"<<std::endl;
 		exit(1);
 	}
@@ -134,8 +163,8 @@ void createMutex(pthread_mutex_t &mutex){
  * lock the mutex
  * @param mutex a mutex
  */
-void lockMutex(pthread_mutex_t &mutex){
-	if(pthread_mutex_lock(&mutex)!=0){
+void lockMutex(pthread_mutex_t *mutex){
+	if(pthread_mutex_lock(mutex)!=0){
 		std::cerr<<"mapReduceFramework failure: pthread_mutex_lock failed"<<std::endl;
 		exit(1);
 	}
@@ -145,8 +174,8 @@ void lockMutex(pthread_mutex_t &mutex){
  * unlock the mutex
  * @param mutex a mutex
  */
-void unlockMutex(pthread_mutex_t &mutex){
-	if(pthread_mutex_unlock(&mutex)!=0){
+void unlockMutex(pthread_mutex_t *mutex){
+	if(pthread_mutex_unlock(mutex)!=0){
 		std::cerr<<"mapReduceFramework failure: pthread_mutex_unlock failed"<<std::endl;
 		exit(1);
 	}
@@ -166,11 +195,10 @@ void mappingThreadsInit(int numThread){
         createThread(newExecMapThread,mapAll);
 
         execMapVector.push_back(std::make_pair(newExecMapThread, newMappingVector));
-        pthread_mutex_t mapContainerMutex;
+        pthread_mutex_t *mapContainerMutex;
 	    createMutex(mapContainerMutex);
 
         mutexVector.push_back(mapContainerMutex);
-
     }
 }
 
@@ -216,11 +244,21 @@ void createLogFile(int numThread){
 		myLogFile<<"RunMapReduceFramework started with " <<numThread<<" threads\n";
 	}
 	catch(std::ofstream::failure e){
-		std::cerr<<"mapReduceFramework failure: open failed"<<std::endl;
+		//todo ido do you we need another error message for a write operation
+		std::cerr<<"mapReduceFramework failure: open|write failed"<<std::endl;
 		exit(1);
 	}
 }
 
+/**
+ * write a message to the log file
+ * @param message the text to be written
+ */
+void writingToTheLogFile(std:: string message){
+	lockMutex(logMutex);
+	myLogFile<<message;
+	unlockMutex(logMutex);
+}
 /**
  * initiate the threads of the mapping and shuffling, and also initiate the
  * pthreadToContainer
@@ -276,11 +314,45 @@ void finalizer(bool autoDeleteV2K2, int numThreads){
     if (autoDeleteV2K2){
         clearK2V2Vector(numThreads);
     }
-    // clear mutex and semaphore
+	for(unsigned int i=0;i<numThreads;i++){
+		pthread_mutex_destroy(mutexVector.at(i));
+
+		pthread_detach(execMapVector.at(i).first);
+		lockMutex(logMutex);
+		myLogFile<<"Thread ExecMap terminated"+ getDateAndTime() +"\n";
+		unlockMutex(logMutex);
+
+		pthread_detach(execReduceVector.at(i).first);
+		lockMutex(logMutex);
+		myLogFile<<"Thread ExecReduce terminated"+ getDateAndTime() +"\n";
+		unlockMutex(logMutex);
+	}
+
+	pthread_detach(shuffleThread);
+	sem_destroy(shuffleSemaphore);
+
+	pthread_mutex_destroy(outputVectorMutex);
+	pthread_mutex_destroy(MapResources.pthreadToContainerMutex);
+	pthread_mutex_destroy(MapResources.inputVectorIndexMutex);
+	pthread_mutex_destroy(ReduceResources.shuffledVectorIndexMutex);
+
+	pthread_mutex_destroy(logMutex);
+
+	writingToTheLogFile("RunMapReduceFramework finished\n");
+	//close the log file
+	try{
+		myLogFile.close();
+	}catch(std::ofstream::failure e) {
+		std::cerr << "MapReduceFramework Failure: close failed." << std::endl;
+		exit(1);
+	}
 }
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec,
                                     int multiThreadLevel, bool autoDeleteV2K2){
+	struct timeval before, after;
+	int beforeStatus, afterStatus;
+	beforeStatus = gettimeofday(&before, NULL);
 
 	init(multiThreadLevel,mapReduce,itemsVec);
 
@@ -288,9 +360,30 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         std::cerr << "MapReduceFramework Failure: pthread_join failed." << std::endl;
         exit(1);
     }
+	if ((beforeStatus | afterStatus) == -1) { //check for a failure in accessing the time
+		std::cerr << "MapReduceFramework Failure: getTimeOfDay failed." << std::endl;
+		exit(1);
+	}
+	afterStatus = gettimeofday(&after, NULL);
+	double time = conversionToNanoSecond(before,after);
+	std::string timeStr =std::to_string(time);
+	std::string text="Map and Shuffle took" + timeStr+ "ns\\n";
+	writingToTheLogFile(text);
+
+	beforeStatus = gettimeofday(&before, NULL);
+
+
     reducingThreadsInit(multiThreadLevel);
     finalizer(autoDeleteV2K2, multiThreadLevel);
-    return outputVector;
+
+	afterStatus = gettimeofday(&after, NULL);
+	time = conversionToNanoSecond(before,after);
+	timeStr =std::to_string(time);
+	text="Reduce took" + timeStr+ "ns\\n";
+
+	writingToTheLogFile(text);
+
+	return outputVector;
 }
 
 
@@ -350,6 +443,10 @@ void mapCurrentChunk(unsigned int chunkStartingIndex) {
  */
 void* mapAll(void*)
 {
+	lockMutex(logMutex);
+	myLogFile<<"Thread ExecMap created"+ getDateAndTime() +"\n";
+	unlockMutex(logMutex);
+
     // lock and unlock the pTC mutex
 	lockMutex(MapResources.pthreadToContainerMutex);
 	unlockMutex(MapResources.pthreadToContainerMutex);
@@ -391,15 +488,20 @@ void searchingAndInsertingData(k2Base* key, v2Base* value,unsigned int &pairsShu
 	}
 	//increasing the count of the pairs that had been shuffled
 	pairsShuffled++;
-	if(sem_wait(shuffleSemaphore)!=0){
-		std::cerr<<"mapReduceFramework failure: sem_wait failed"<<std::endl;
-		exit(1);
+
+	if(pairsShuffled<=ShuffleResources.numOfPairs) {
+
+		if (sem_wait(shuffleSemaphore) != 0) {
+			std::cerr << "mapReduceFramework failure: sem_wait failed" << std::endl;
+			exit(1);
+		}
 	}
 }
 
 /**
  * shuffle data from a container
  * @param i the index of the execMap containers
+}
  * @param pairsShuffled the number of the pairs that had been shuffled
  */
 void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
@@ -436,18 +538,24 @@ void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
  */
 void* shuffleAll(void*){
 
+	lockMutex(logMutex);
+	myLogFile<<"Thread shuffle created"+ getDateAndTime() +"\n";
+	unlockMutex(logMutex);
+
 	unsigned int pairsShuffled = 0;
+	if(ShuffleResources.numOfPairs!=0) {
 	//wait until one of the containers is not empty
 	if(sem_wait(shuffleSemaphore)!=0){
 		std::cerr<<"mapReduceFramework failure: sem_wait failed"<<std::endl;
 		exit(1);
 	}
 
-	while(pairsShuffled != ShuffleResources.numOfPairs){
-		for(unsigned int i=0;i< execMapVector.size();i++){
+		while (pairsShuffled != ShuffleResources.numOfPairs) {
+			for (unsigned int i = 0; i < execMapVector.size(); i++) {
 
-			// shuffling Data From A specific Container
-			shufflingDataFromAContainer(i,pairsShuffled);
+				// shuffling Data From A specific Container
+				shufflingDataFromAContainer(i, pairsShuffled);
+			}
 		}
 	}
 
@@ -469,6 +577,10 @@ void reduceCurrentChunck(unsigned int chunkStartingIndex){
 
 void* reduceAll(void *)
 {
+	lockMutex(logMutex);
+	myLogFile<<"Thread ExecReduce created"+ getDateAndTime() +"\n";
+	unlockMutex(logMutex);
+
 	unsigned int chunkStartingIndex = 0;
 
 	// loop until there are no more pairs to take from input vector
