@@ -20,17 +20,14 @@ typedef std::pair<k3Base*, v3Base*> OUT_ITEM;
 
 typedef std::vector<OUT_ITEM> OUT_ITEMS_VEC;
 
-
-OUT_ITEMS_VEC outputVector;
-
+/** vector of pairs of thread and his matching after-mapping vector*/
 PTC execMapVector;
 
 /** the shuffle thread*/
 pthread_t shuffleThread;
 
+/** vector of pairs of thread and his matching after-reducing vector*/
 REDUCED_CONTAINERS execReduceVector;
-
-pthread_mutex_t outputVectorMutex;
 
 /** the input vector that was given in the runMapReduceFramework*/
 MapReduceBase* mapReduce;
@@ -46,6 +43,12 @@ std::vector<pthread_mutex_t> mutexVector;
 
 /** the output vector of the shuffle process*/
 std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
+
+/** final output vector*/
+OUT_ITEMS_VEC outputVector;
+
+/** mutex for the final output vector */
+pthread_mutex_t outputVectorMutex;
 
 std::ofstream myLogFile;
 
@@ -175,7 +178,7 @@ void mappingThreadsInit(int numThread){
  * initiating the shuffle thread and the vector that contains the indexes
  * that point where the shuffle at the passage of the map conainter
  * @param numOfThreads the number of threads
- * @param numOfPairs the num of pairs to be shuffled
+ * @param numOfPairs the nufm of pairs to be shuffled
  */
 void shuffleThreadInit(int numOfThreads, unsigned long numOfPairs) {
 	for (int i = 0; i < numOfThreads; i++) {
@@ -251,8 +254,29 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	shuffleThreadInit(numThread, itemsVec.size());
 
 	//unlock the pthreadToContainer
-	unlockMutex(MapResources.pthreadToContainerMutex);
+    unlockMutex(MapResources.pthreadToContainerMutex);
+}
 
+void clearK2V2Vector(int numThreads){
+    for (unsigned int threadIndex = 0; threadIndex < numThreads; ++threadIndex){
+        MAP_VEC currentVector = execMapVector.at(threadIndex).second;
+        for (auto itemsIter = currentVector.begin(); itemsIter != currentVector.end() ; ++itemsIter)
+        {
+            delete (*itemsIter).first;
+            delete (*itemsIter).second;
+        }
+    }
+}
+
+/**
+ * release all the resourses that allocated during the running of RunMapReduceFramework.
+ * @param autoDeleteV2K2 if true, release also V2K2 pairs
+ */
+void finalizer(bool autoDeleteV2K2, int numThreads){
+    if (autoDeleteV2K2){
+        clearK2V2Vector(numThreads);
+    }
+    // clear mutex and semaphore
 }
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec,
@@ -265,6 +289,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         exit(1);
     }
     reducingThreadsInit(multiThreadLevel);
+    finalizer(autoDeleteV2K2, multiThreadLevel);
     return outputVector;
 }
 
@@ -360,9 +385,8 @@ void searchingAndInsertingData(k2Base* key, v2Base* value,unsigned int &pairsShu
 	}
 	else{
 		// add a new pair
-		auto *valueVector= new std::vector<v2Base*>{value} ;
-		shuffledMap.insert(std::make_pair(key, *valueVector));
-		//todo do i need to delete the valueVector?
+		auto valueVector= std::vector<v2Base*>{value} ;
+		shuffledMap.insert(std::make_pair(key, valueVector));
 
 	}
 	//increasing the count of the pairs that had been shuffled
