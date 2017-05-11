@@ -3,6 +3,7 @@
 #include <map>
 #include <iostream>
 #include <stdlib.h>
+#include <fstream>
 #include "semaphore.h"
 
 #define CHUNK_SIZE 10
@@ -45,6 +46,11 @@ std::vector<pthread_mutex_t> mutexVector;
 
 /** the output vector of the shuffle process*/
 std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
+
+std::ofstream myLogFile;
+
+pthread_mutex_t logMutex;
+
 
 /**
  * a struct of resources for the ExecMap objects
@@ -197,12 +203,31 @@ void reducingThreadsInit(int numThread){
 }
 
 /**
+ * creating the log fle
+ */
+void createLogFile(int numThread){
+
+	myLogFile.exceptions(std::ofstream::failbit|std::ofstream::badbit);
+	try{
+		myLogFile.open(".temp");
+		myLogFile<<"RunMapReduceFramework started with " <<numThread<<" threads\n";
+	}
+	catch(std::ofstream::failure e){
+		std::cerr<<"mapReduceFramework failure: open failed"<<std::endl;
+		exit(1);
+	}
+}
+
+/**
  * initiate the threads of the mapping and shuffling, and also initiate the
  * pthreadToContainer
  * @param numThread the number of threads to be create while mapping
  * @param mapReduce an object that contain the map function
  */
 void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
+	//creating the log file
+	createLogFile(numThread);
+
 	//initiate the semaphore
 	if(sem_init(shuffleSemaphore,0,1)==-1){
 		std::cerr<<"mapReduceFramework failure: sem_init failed"<<std::endl;
@@ -216,6 +241,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
     mapReduce = &mapReduceBase;
 
 	createMutex(outputVectorMutex);
+	createMutex(logMutex);
 
 	//lock the pthreadToContainer
 	lockMutex(MapResources.pthreadToContainerMutex);
