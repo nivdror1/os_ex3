@@ -37,6 +37,18 @@ pthread_mutex_t *outputVectorMutex;
 MapReduceBase* mapReduce;
 
 /**
+ * a semaphore which control the shuffle progressing by up/down the semaphore
+ * any time a pair is been added/deleted form the ExecMap containers
+ */
+sem_t *shuffleSemaphore;
+
+/** a vector which contain pointers to the mutex of execMap containers*/
+std::vector<pthread_mutex_t*> mutexVector;
+
+/** the output vector of the shuffle process*/
+std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
+
+/**
  * a struct of resources for the ExecMap objects
  */
 struct MapResources{
@@ -57,18 +69,6 @@ struct MapResources{
 
 struct ShuffleResources{
 
-	/**
-	 * a semaphore which control the shuffle progressing by up/down the semaphore
-	 * any time a pair is been added/deleted form the ExecMap containers
-	 */
-	sem_t *shuffleSemaphore;
-
-	/** a vector which contain pointers to the mutex of execMap containers*/
-	std::vector<pthread_mutex_t*> mutexVector;
-
-	/** the output vector of the shuffle process*/
-	std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
-
 	/** the number of pair that need to be shuffled*/
 	unsigned long numOfPairs;
 
@@ -84,9 +84,6 @@ struct ReduceResources{
 
 	/** a mutex on the inputVectorIndexMutex*/
 	pthread_mutex_t shuffledVectorIndexMutex;
-
-	/** the input vector that was given in the runMapReduceFramework*/
-	SHUFFLED_VEC shuffledVector;
 
 	/** the index of current location in the input vector*/
 	int shuffledVectorIndex=0;
@@ -117,7 +114,7 @@ void mappingThreadsInit(int numThread){
         execMapVector.push_back(std::make_pair(newExecMapThread, newMappingVector));
         pthread_mutex_t mapContainerMutex;
         pthread_mutex_init(&mapContainerMutex,NULL); //todo check if there are errors of the functions
-        shuffleResources.mutexVector.push_back(&mapContainerMutex);
+        mutexVector.push_back(&mapContainerMutex);
 
     }
 }
@@ -156,7 +153,7 @@ void reducingThreadsInit(int numThread){
  */
 void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	//initiate the semaphore
-	int error = sem_init(shuffleResources.shuffleSemaphore,0,1); //todo error
+	int error = sem_init(shuffleSemaphore,0,1); //todo error
 
 	//update  map resources
 	pthread_mutex_init(&mapResources.inputVectorIndexMutex,NULL);
@@ -195,13 +192,13 @@ void Emit2 (k2Base* key, v2Base* value)
 	{
 		if (pthread_equal(execMapVector.at(i).first,currentThreadId))
 		{
-			pthread_mutex_lock(shuffleResources.mutexVector.at(i));
+			pthread_mutex_lock(mutexVector.at(i));
 			execMapVector.at(i).second.push_back(std::make_pair(key, value));
-			pthread_mutex_unlock(shuffleResources.mutexVector.at(i));
+			pthread_mutex_unlock(mutexVector.at(i));
 			break;
 		}
 	}
-	sem_post(shuffleResources.shuffleSemaphore);
+	sem_post(shuffleSemaphore);
 }
 
 void Emit3 (k3Base* key, v3Base* value){
@@ -268,21 +265,21 @@ void* mapAll(void*)
  */
 void searchingAndInsertingData(k2Base* key, v2Base* value,unsigned int &pairsShuffled){
 	//search the key
-	auto search = shuffleResources.shuffledMap.find(key);
+	auto search = shuffledMap.find(key);
 	//if the key has been found ,append only the value
-	if(search!=shuffleResources.shuffledMap.end()) {
+	if(search != shuffledMap.end()) {
 		search->second.push_back(value);
 	}
 	else{
 		// add a new pair
 		auto *valueVector= new std::vector<v2Base*>{value} ;
-		shuffleResources.shuffledMap.insert(std::make_pair(key, *valueVector));
+		shuffledMap.insert(std::make_pair(key, *valueVector));
 		//todo do i need to delete the valueVector?
 
 	}
 	//increasing the count of the pairs that had been shuffled
 	pairsShuffled++;
-	sem_wait(shuffleResources.shuffleSemaphore);
+	sem_wait(shuffleSemaphore);
 }
 
 /**
@@ -297,14 +294,14 @@ void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
 		unsigned int index= shuffleResources.mapContainerIndex.at(i);
 
 		//lock the mutex of the container
-		pthread_mutex_lock(shuffleResources.mutexVector.at(i));
+		pthread_mutex_lock(mutexVector.at(i));
 
 		//get the value from the container
 		k2Base *key = execMapVector.at(i).second.at(index).first;
 		v2Base *value = execMapVector.at(i).second.at(index).second;
 
 		//unlock the mutex of the container
-		pthread_mutex_unlock(shuffleResources.mutexVector.at(i));
+		pthread_mutex_unlock(mutexVector.at(i));
 
 		//increase the index value of the specific map container
 		shuffleResources.mapContainerIndex.at(i)+=1;
@@ -326,7 +323,7 @@ void* shuffleAll(void*){
 
 	unsigned int pairsShuffled = 0;
 	//wait until one of the containers is not empty
-	sem_wait(shuffleResources.shuffleSemaphore);
+	sem_wait(shuffleSemaphore);
 
 	while(pairsShuffled != shuffleResources.numOfPairs){
 		for(unsigned int i=0;i< execMapVector.size();i++){
