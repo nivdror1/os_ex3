@@ -11,10 +11,6 @@ typedef std::vector<std::pair<k2Base*, v2Base*>> MAP_VEC;
 
 typedef std::vector<std::pair<pthread_t,MAP_VEC>> PTC;
 
-typedef std::pair<k2Base*, std::vector<v2Base*>> SHUFFLED_ITEM;
-
-typedef std::vector<SHUFFLED_ITEM> SHUFFLED_VEC;
-
 typedef std::vector<std::pair<k3Base*, v3Base*>> REDUCE_VEC;
 
 typedef std::vector<std::pair<pthread_t,REDUCE_VEC>> REDUCED_CONTAINERS;
@@ -67,7 +63,7 @@ struct MapResources{
     /** the index of current location in the input vector*/
     unsigned int inputVectorIndex=0;
 
-}mapResources;
+}MapResources;
 
 struct ShuffleResources{
 
@@ -77,7 +73,7 @@ struct ShuffleResources{
 	/** a vector of indexes that specify where the shuffle is in the passing through the container*/
 	std::vector<unsigned int> mapContainerIndex;
 
-}shuffleResources;
+}ShuffleResources;
 
 /**
  * a struct of resources for the ExecMap objects
@@ -88,12 +84,12 @@ struct ReduceResources{
 	pthread_mutex_t shuffledVectorIndexMutex;
 
 	/** the index of current location in the input vector*/
-	int shuffledVectorIndex=0;
+	unsigned int shuffledVectorIndex=0;
 
 	/** an object of mapReduce which contain the map function*/
 	MapReduceBase* mapReduce;
 
-}reduceResources;
+}ReduceResources;
 
 void* mapAll(void*);
 
@@ -175,12 +171,12 @@ void mappingThreadsInit(int numThread){
  * @param numOfThreads the number of threads
  * @param numOfPairs the num of pairs to be shuffled
  */
-void shuffleThreadInit(int numOfThreads, unsigned long numOfPairs){
-	for (int i = 0 ; i < numOfThreads;i++){
-		shuffleResources.mapContainerIndex.push_back(0);
+void shuffleThreadInit(int numOfThreads, unsigned long numOfPairs) {
+	for (int i = 0; i < numOfThreads; i++) {
+		ShuffleResources.mapContainerIndex.push_back(0);
 	}
-	shuffleResources.numOfPairs = numOfPairs;
-	createThread(shuffleThread,shuffleAll);
+	ShuffleResources.numOfPairs = numOfPairs;
+	createThread(shuffleThread, shuffleAll);
 }
 
 /**
@@ -211,24 +207,24 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	int error = sem_init(shuffleSemaphore,0,1); //todo error
 
 	//update  map resources
-	createMutex(mapResources.inputVectorIndexMutex);
-	createMutex(mapResources.pthreadToContainerMutex);
+	createMutex(MapResources.inputVectorIndexMutex);
+	createMutex(MapResources.pthreadToContainerMutex);
     mapResources.inputVector = itemsVec;
     mapReduce = &mapReduceBase;
 
 	createMutex(outputVectorMutex);
 
 	//lock the pthreadToContainer
-	lockMutex(mapResources.pthreadToContainerMutex);
+	lockMutex(MapResources.pthreadToContainerMutex);
 
     mappingThreadsInit(numThread);
 	//
 	shuffleThreadInit(numThread, itemsVec.size());
 
 	//unlock the pthreadToContainer
-	pthread_mutex_unlock(&mapResources.pthreadToContainerMutex);
+	pthread_mutex_unlock(&MapResources.pthreadToContainerMutex);
 
-    reducingThreadsInit(numThread);
+
 
 
 }
@@ -237,6 +233,13 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
                                     int multiThreadLevel, bool autoDeleteV2K2){
 
 	init(multiThreadLevel,mapReduce,itemsVec);
+
+    if (pthread_join(shuffleThread, NULL) != 0){
+        std::cerr << "MapReduceFramework Failure: pthread_join failed." << std::endl;
+        exit(1);
+    }
+    reducingThreadsInit(multiThreadLevel);
+    return outputVector;
 }
 
 
@@ -276,11 +279,11 @@ void mapCurrentChunk(unsigned int chunkStartingIndex) {
     IN_ITEM currentItem;
     // take the minimum so we don't get out of bounds from input vector
     unsigned int numberOfIterations = std::min(chunkStartingIndex + CHUNK_SIZE,
-                                  (unsigned int)mapResources.inputVector.size());
+                                  (unsigned int)MapResources.inputVector.size());
     for (unsigned int i = chunkStartingIndex; i < numberOfIterations; ++i)
     {
         // map the current item from input vector
-        currentItem = mapResources.inputVector.at(i);
+        currentItem = MapResources.inputVector.at(i);
         mapReduce->Map(currentItem.first, currentItem.second);
     }
 }
@@ -294,17 +297,17 @@ void mapCurrentChunk(unsigned int chunkStartingIndex) {
 void* mapAll(void*)
 {
     // lock and unlock the pTC mutex
-	lockMutex(mapResources.pthreadToContainerMutex);
-	unlockMutex(mapResources.pthreadToContainerMutex);
+	lockMutex(MapResources.pthreadToContainerMutex);
+	unlockMutex(MapResources.pthreadToContainerMutex);
 
     unsigned int chunkStartingIndex = 0;
     // loop until there are no more pairs to take from input vector
-    while (chunkStartingIndex < mapResources.inputVector.size()){
+    while (chunkStartingIndex < MapResources.inputVector.size()){
         // lock inputVectorIndex to get the starting index for next chunk to map
-	    lockMutex(mapResources.inputVectorIndexMutex);
-        chunkStartingIndex = mapResources.inputVectorIndex;
-        mapResources.inputVectorIndex += CHUNK_SIZE;
-        unlockMutex(mapResources.inputVectorIndexMutex);
+	    lockMutex(MapResources.inputVectorIndexMutex);
+        chunkStartingIndex = MapResources.inputVectorIndex;
+        MapResources.inputVectorIndex += CHUNK_SIZE;
+        unlockMutex(MapResources.inputVectorIndexMutex);
 
         mapCurrentChunk(chunkStartingIndex);
     }
@@ -345,8 +348,8 @@ void searchingAndInsertingData(k2Base* key, v2Base* value,unsigned int &pairsShu
 void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
 
 	//going through the execMapVector
-	while(shuffleResources.mapContainerIndex.at(i) > execMapVector.at(i).second.size()) {
-		unsigned int index= shuffleResources.mapContainerIndex.at(i);
+	while(ShuffleResources.mapContainerIndex.at(i) > execMapVector.at(i).second.size()) {
+		unsigned int index= ShuffleResources.mapContainerIndex.at(i);
 
 		//lock the mutex of the container
 		lockMutex(mutexVector.at(i));
@@ -359,7 +362,7 @@ void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
 		unlockMutex(mutexVector.at(i));
 
 		//increase the index value of the specific map container
-		shuffleResources.mapContainerIndex.at(i)+=1;
+		ShuffleResources.mapContainerIndex.at(i)+=1;
 
 		// insert the pair into the shuffle container
 		searchingAndInsertingData(key,value,pairsShuffled);
@@ -380,7 +383,7 @@ void* shuffleAll(void*){
 	//wait until one of the containers is not empty
 	sem_wait(shuffleSemaphore);
 
-	while(pairsShuffled != shuffleResources.numOfPairs){
+	while(pairsShuffled != ShuffleResources.numOfPairs){
 		for(unsigned int i=0;i< execMapVector.size();i++){
 
 			// shuffling Data From A specific Container
@@ -390,16 +393,15 @@ void* shuffleAll(void*){
 }
 
 void reduceCurrentChunck(unsigned int chunkStartingIndex){
-	SHUFFLED_ITEM currentItem;
-
+    auto iteratingIndex = shuffledMap.begin();
+    std::advance(iteratingIndex, chunkStartingIndex);
 	// take the minimum so we don't get out of bounds from shuffled vector
 	unsigned int numberOfIterations = std::min(chunkStartingIndex + CHUNK_SIZE,
-								  (unsigned int)reduceResources.shuffledVector.size());
-	for (unsigned int i = chunkStartingIndex; i < numberOfIterations; ++i)
+								  (unsigned int)shuffledMap.size());
+	for (unsigned int i = 0; i < numberOfIterations; ++i)
 	{
-		// map the current item from input vector
-		currentItem = reduceResources.shuffledVector.at(i);
-		reduceResources.mapReduce->Reduce(currentItem.first, currentItem.second);
+		ReduceResources.mapReduce->Reduce(iteratingIndex->first, iteratingIndex->second);
+        ++iteratingIndex;
 	}
 }
 
@@ -407,14 +409,14 @@ void* reduceAll(void *)
 {
 	unsigned int chunkStartingIndex = 0;
 
-    int error = pthread_join(shuffleThread, NULL);
 	// loop until there are no more pairs to take from input vector
-	while (chunkStartingIndex < reduceResources.shuffledVector.size()){
+	while (chunkStartingIndex < shuffledMap.size()){
 		// lock shuffledVectorIndex to get the starting index for next chunk to map
-		lockMutex(reduceResources.shuffledVectorIndexMutex);
-		chunkStartingIndex = reduceResources.shuffledVectorIndex;
-		reduceResources.shuffledVectorIndex += CHUNK_SIZE;
-		unlockMutex(reduceResources.shuffledVectorIndexMutex);
+		lockMutex(ReduceResources.shuffledVectorIndexMutex);
+		chunkStartingIndex = ReduceResources.shuffledVectorIndex;
+		ReduceResources.shuffledVectorIndex += CHUNK_SIZE;
+		unlockMutex(ReduceResources.shuffledVectorIndexMutex);
 
+		reduceCurrentChunck(chunkStartingIndex);
 	}
 }
