@@ -138,7 +138,7 @@ void lockMutex(pthread_mutex_t &mutex){
  */
 void unlockMutex(pthread_mutex_t &mutex){
 	if(pthread_mutex_unlock(&mutex)!=0){
-		std::cerr<<"mapReduceFramework failure: pthread_mutex_lock failed"<<std::endl;
+		std::cerr<<"mapReduceFramework failure: pthread_mutex_unlock failed"<<std::endl;
 		exit(1);
 	}
 }
@@ -204,7 +204,10 @@ void reducingThreadsInit(int numThread){
  */
 void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	//initiate the semaphore
-	int error = sem_init(shuffleSemaphore,0,1); //todo error
+	if(sem_init(shuffleSemaphore,0,1)==-1){
+		std::cerr<<"mapReduceFramework failure: sem_init failed"<<std::endl;
+		exit(1);
+	}
 
 	//update  map resources
 	createMutex(MapResources.inputVectorIndexMutex);
@@ -222,10 +225,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	shuffleThreadInit(numThread, itemsVec.size());
 
 	//unlock the pthreadToContainer
-	pthread_mutex_unlock(&MapResources.pthreadToContainerMutex);
-
-
-
+	unlockMutex(MapResources.pthreadToContainerMutex);
 
 }
 
@@ -256,7 +256,10 @@ void Emit2 (k2Base* key, v2Base* value)
 			break;
 		}
 	}
-	sem_post(shuffleSemaphore);
+	if(sem_post(shuffleSemaphore)!=0){
+		std::cerr<<"mapReduceFramework failure: sem_post failed"<<std::endl;
+		exit(1);
+	}
 }
 
 void Emit3 (k3Base* key, v3Base* value){
@@ -312,6 +315,7 @@ void* mapAll(void*)
         mapCurrentChunk(chunkStartingIndex);
     }
 
+	return 0;
 }
 
 
@@ -337,7 +341,10 @@ void searchingAndInsertingData(k2Base* key, v2Base* value,unsigned int &pairsShu
 	}
 	//increasing the count of the pairs that had been shuffled
 	pairsShuffled++;
-	sem_wait(shuffleSemaphore);
+	if(sem_wait(shuffleSemaphore)!=0){
+		std::cerr<<"mapReduceFramework failure: sem_wait failed"<<std::endl;
+		exit(1);
+	}
 }
 
 /**
@@ -381,7 +388,10 @@ void* shuffleAll(void*){
 
 	unsigned int pairsShuffled = 0;
 	//wait until one of the containers is not empty
-	sem_wait(shuffleSemaphore);
+	if(sem_wait(shuffleSemaphore)!=0){
+		std::cerr<<"mapReduceFramework failure: sem_wait failed"<<std::endl;
+		exit(1);
+	}
 
 	while(pairsShuffled != ShuffleResources.numOfPairs){
 		for(unsigned int i=0;i< execMapVector.size();i++){
@@ -390,6 +400,8 @@ void* shuffleAll(void*){
 			shufflingDataFromAContainer(i,pairsShuffled);
 		}
 	}
+
+	return 0;
 }
 
 void reduceCurrentChunck(unsigned int chunkStartingIndex){
@@ -419,4 +431,6 @@ void* reduceAll(void *)
 
 		reduceCurrentChunck(chunkStartingIndex);
 	}
+
+	return 0;
 }
