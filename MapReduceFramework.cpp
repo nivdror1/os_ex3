@@ -102,6 +102,11 @@ void* shuffleAll(void*);
 
 void* reduceAll(void*);
 
+/**
+ * initiating the map threads and the vector which contains the
+ * map container the a mutex for each map thread
+ * @param numThread
+ */
 void mappingThreadsInit(int numThread){
     //spawn the new threads and initiate the vector pthreadToContainer
     for(int i=0;i<numThread;i++){
@@ -117,6 +122,12 @@ void mappingThreadsInit(int numThread){
     }
 }
 
+/**
+ * initiating the shuffle thread and the vector that contains the indexes
+ * that point where the shuffle at the passage of the map conainter
+ * @param numOfThreads the number of reduce threads to be created
+ * @param numOfPairs the num of pairs to be shuffled
+ */
 void shuffleThreadInit(int numOfThreads, unsigned long numOfPairs){
 	for (int i = 0 ; i < numOfThreads;i++){
 		shuffleResources.mapContainerIndex.push_back(0);

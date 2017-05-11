@@ -10,7 +10,7 @@
  */
 void printResults(OUT_ITEMS_VEC &outputVector){
 	// going over all the vector cells
-	for(int j=0;j<outputVector.size();j++){
+	for(unsigned int j=0;j<outputVector.size();j++){
 		StringContainers *result= (StringContainers*)outputVector.at(j).first;
 		IntegerContainers *times= (IntegerContainers*)outputVector.at(j).second;
 
@@ -35,12 +35,12 @@ void printResults(OUT_ITEMS_VEC &outputVector){
 void deleteResources(IN_ITEMS_VEC &inputVector,
                      OUT_ITEMS_VEC &outputVector,MapReduceDerived *worker,StringContainers *keyWord){
 	//delete v3Base and k3Base
-	for(int l = 0;l<outputVector.size();l++){
+	for(unsigned int l = 0;l<outputVector.size();l++){
 		delete outputVector.at(l).first;
 		delete outputVector.at(l).second;
 	}
 	//delete v2Base
-	for(int j=0;j<inputVector.size();j++){
+	for(unsigned int j=0;j<inputVector.size();j++){
 		delete inputVector.at(j).second;
 	}
 	//delete k1Base
