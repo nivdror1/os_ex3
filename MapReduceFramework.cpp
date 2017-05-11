@@ -209,7 +209,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	//update  map resources
 	createMutex(MapResources.inputVectorIndexMutex);
 	createMutex(MapResources.pthreadToContainerMutex);
-    mapResources.inputVector = itemsVec;
+    MapResources.inputVector = itemsVec;
     mapReduce = &mapReduceBase;
 
 	createMutex(outputVectorMutex);
