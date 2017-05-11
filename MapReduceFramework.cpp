@@ -399,7 +399,7 @@ void searchingAndInsertingData(k2Base* key, v2Base* value,unsigned int &pairsShu
 
 /**
  * shuffle data from a container
- * @param i the index of the execMap container
+ * @param i the index of the execMap containers
  * @param pairsShuffled the number of the pairs that had been shuffled
  */
 void shufflingDataFromAContainer(unsigned int i, unsigned int &pairsShuffled){
