@@ -1,6 +1,7 @@
 #include "MapReduceFramework.h"
 #include <pthread.h>
 #include <map>
+#include <iostream>
 #include "semaphore.h"
 
 #define CHUNK_SIZE 10
@@ -169,7 +170,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 	//unlock the pthreadToContainer
 	pthread_mutex_unlock(&MapResources.pthreadToContainerMutex);
 
-    reducingThreadsInit(numThread);
+
 
 
 }
@@ -178,6 +179,13 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
                                     int multiThreadLevel, bool autoDeleteV2K2){
 
 	init(multiThreadLevel,mapReduce,itemsVec);
+
+    if (pthread_join(shuffleThread, NULL) != 0){
+        std::cerr << "MapReduceFramework Failure: pthread_join failed." << std::endl;
+        exit(1);
+    }
+    reducingThreadsInit(multiThreadLevel);
+    return outputVector;
 }
 
 
@@ -347,7 +355,6 @@ void* reduceAll(void *)
 {
 	unsigned int chunkStartingIndex = 0;
 
-    int error = pthread_join(shuffleThread, NULL);
 	// loop until there are no more pairs to take from input vector
 	while (chunkStartingIndex < shuffledMap.size()){
 		// lock shuffledVectorIndex to get the starting index for next chunk to map
