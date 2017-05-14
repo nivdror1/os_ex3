@@ -32,7 +32,7 @@ void MapReduceDerived::Map(const k1Base *const key, const v1Base *const val) con
 		while((file=readdir(dir))!=NULL){
 			std::string fileName= file->d_name;
 			//check if the search key is contained in the file name
-			if(fileName.find(strKey->getData())){
+			if(fileName.find(strKey->getData()) != -1){
 				Emit2(new StringContainers(fileName), new IntegerContainers(1));
 			}
 		}
@@ -51,5 +51,5 @@ void MapReduceDerived::Map(const k1Base *const key, const v1Base *const val) con
 void MapReduceDerived::Reduce(const k2Base *const key, const V2_VEC &vals) const
 {
 	StringContainers * strKey= (StringContainers *)key;
-	Emit3(strKey, new IntegerContainers(vals.size()));
+	Emit3(new StringContainers(strKey->getData()), new IntegerContainers(vals.size()));
 }

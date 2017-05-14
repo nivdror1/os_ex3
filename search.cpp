@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include "MapReduceDerived.h"
 #include <algorithm>
+#include <stdlib.h>
 
 /**
  * print the results
@@ -35,9 +36,9 @@ void printResults(OUT_ITEMS_VEC &outputVector){
 void deleteResources(IN_ITEMS_VEC &inputVector,
                      OUT_ITEMS_VEC &outputVector,MapReduceDerived *worker,StringContainers *keyWord){
 	//delete v3Base and k3Base
-	for(unsigned int l = 0;l<outputVector.size();l++){
-		delete outputVector.at(l).first;
-		delete outputVector.at(l).second;
+	for(auto iter = outputVector.begin(); iter < outputVector.end(); ++iter){
+		delete iter->first;
+		delete iter->second;
 	}
 	//delete v2Base
 	for(unsigned int j=0;j<inputVector.size();j++){
@@ -59,7 +60,7 @@ void isDirectory(IN_ITEMS_VEC &inputVector, StringContainers *keyWord,char* path
     struct stat st;
 	for(int i = 2; i < numPaths ; i++){
 		if(stat(paths[i],&st)==0){
-			if(st.st_mode & S_IFDIR!=0){ //check if it a directory
+			if(S_ISDIR(st.st_mode)!=0){ //check if it a directory
 				inputVector.push_back(IN_ITEM(keyWord,
 											  new StringContainers(paths[i])));
 			}
@@ -82,7 +83,7 @@ int main(int argc,char* argv[]){
     isDirectory(inputVector,keyWord,argv,argc);
 
     //use the MapReduceFramework
-	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,inputVector.size(),true);
+	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,1,true);
     //sort and print the output
 	std::sort(outputVector.begin(),outputVector.end());
 	printResults(outputVector);
