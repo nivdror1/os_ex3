@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include "StringContainers.h"
 #include "IntegerContainers.h"
+#include <algorithm>
 
 #define CHUNK_SIZE 10
 #define SECONDS_TO_NANO_SECONDS 1000000000
@@ -197,6 +198,9 @@ void destroyMutex(pthread_mutex_t &mutex){
 	}
 }
 
+bool comparator(OUT_ITEM pair1 , OUT_ITEM pair2){
+	return *(pair1.first) < *(pair2.first);
+}
 
 /**
  * initiating the map threads and the vector which contains the
@@ -406,6 +410,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 		exit(1);
 	}
 
+	//sort the output
+	std::sort(outputVector.begin(),outputVector.end(),comparator);
 	return outputVector;
 }
 

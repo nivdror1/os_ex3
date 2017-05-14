@@ -2,7 +2,6 @@
 #include <iostream>
 #include <sys/stat.h>
 #include "MapReduceDerived.h"
-#include <algorithm>
 #include <stdlib.h>
 
 /**
@@ -84,8 +83,7 @@ int main(int argc,char* argv[]){
 
     //use the MapReduceFramework
 	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,1,true);
-    //sort and print the output
-	std::sort(outputVector.begin(),outputVector.end());
+
 	printResults(outputVector);
     //delete the resources
 	deleteResources(inputVector,outputVector,worker,keyWord);
