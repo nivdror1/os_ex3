@@ -402,6 +402,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 		std::cerr << "MapReduceFramework Failure: getTimeOfDay failed." << std::endl;
 		exit(1);
 	}
+
 	afterStatus = gettimeofday(&after, NULL);
 	double time = conversionToNanoSecond(before,after);
 	std::string timeStr =std::to_string(time);
@@ -442,6 +443,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 		std::cerr << "MapReduceFramework Failure: close failed." << std::endl;
 		exit(1);
 	}
+
+
 
 	//sort the output
 	std::sort(outputVector.begin(),outputVector.end(),K3Comp());

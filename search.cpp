@@ -82,7 +82,7 @@ int main(int argc,char* argv[]){
     isDirectory(inputVector,keyWord,argv,argc);
 
     //use the MapReduceFramework
-	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,1,true);
+	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,inputVector.size(),true);
 
 	printResults(outputVector);
     //delete the resources
