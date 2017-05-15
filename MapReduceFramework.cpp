@@ -100,7 +100,7 @@ struct MapResources{
     IN_ITEMS_VEC inputVector;
 
     /** the index of current location in the input vector*/
-    unsigned int inputVectorIndex=0;
+    unsigned int inputVectorIndex;
 
 }MapResources;
 
@@ -120,7 +120,7 @@ struct ReduceResources{
 	pthread_mutex_t shuffledVectorIndexMutex;
 
 	/** the index of current location in the input vector*/
-	unsigned int shuffledVectorIndex=0;
+	unsigned int shuffledVectorIndex;
 
 }ReduceResources;
 
@@ -306,15 +306,22 @@ void writingToTheLogFile(std:: string message){
  * @param mapReduce an object that contain the map function
  */
 void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
-	numberOfMappingThreads = numThread;
+
 	//creating the log file
 	createLogFile(numThread);
+    outputVector.clear();
 
 	//initiate the semaphore
 	if(sem_init(&shuffleSemaphore,0,0)==-1){
 		std::cerr<<"mapReduceFramework failure: sem_init failed"<<std::endl;
 		exit(1);
 	}
+
+    numberOfMappingThreads = numThread;
+    MapResources.inputVectorIndex=0;
+    ReduceResources.shuffledVectorIndex=0;
+
+    ShuffleResources.mapContainerIndex.clear();
 
 	//update  map resources
 	createMutex(MapResources.inputVectorIndexMutex);
@@ -357,18 +364,16 @@ void finalizer(bool autoDeleteV2K2, int numThreads){
 	for(unsigned int i=0;i<numThreads;i++){
 		destroyMutex(mutexVector.at(i));
 
-
 		pthread_detach(execMapVector.at(i).first);
 		lockMutex(logMutex);
 		myLogFile<<"Thread ExecMap terminated "+ getDateAndTime() +"\n";
 		unlockMutex(logMutex);
-
-		//pthread_detach(execReduceVector.at(i).first);
-		lockMutex(logMutex);
-		myLogFile<<"Thread ExecReduce terminated "+ getDateAndTime() +"\n";
-		unlockMutex(logMutex);
 	}
 
+    mutexVector.clear();
+    execMapVector.clear();
+    execReduceVector.clear();
+    shuffledMap.clear();
 	//pthread_detach(shuffleThread);
 	sem_destroy(&shuffleSemaphore);
 
@@ -415,6 +420,10 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         auto curReduceVector=execReduceVector.at(i).second;
         outputVector.reserve( outputVector.size() + curReduceVector.size());
         outputVector.insert( outputVector.end(), curReduceVector.begin(), curReduceVector.end() );
+
+        lockMutex(logMutex);
+        myLogFile<<"Thread ExecReduce terminated "+ getDateAndTime() +"\n";
+        unlockMutex(logMutex);
 	}
 
     finalizer(autoDeleteV2K2, multiThreadLevel);
@@ -597,7 +606,7 @@ void* shuffleAll(void*){
 	std::cout<<"shuffle began"<<std::endl;
 	bool mapStillRunning=true;
 	lockMutex(logMutex);
-	myLogFile<<"Thread shuffle created"+ getDateAndTime() +"\n";
+	myLogFile<<"Thread shuffle created "+ getDateAndTime() +"\n";
 	unlockMutex(logMutex);
 
 	//wait until one of the containers is not empty
