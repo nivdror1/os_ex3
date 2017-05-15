@@ -15,6 +15,7 @@
 #define SECONDS_TO_NANO_SECONDS 1000000000
 #define MICRO_SECONDS_TO_NANO_SECONDS 1000
 
+
 typedef std::vector<std::pair<k2Base*, v2Base*>> MAP_VEC;
 
 typedef std::vector<std::pair<pthread_t,MAP_VEC>> PTC;
@@ -28,6 +29,20 @@ typedef std::pair<k3Base*, v3Base*> OUT_ITEM;
 typedef std::vector<OUT_ITEM> OUT_ITEMS_VEC;
 
 typedef std::vector<v2Base *> V2_VEC;
+
+struct K3Comp{
+    bool operator()(const OUT_ITEM pair1 , const OUT_ITEM pair2 ) const
+    {
+        return *(pair1.first) < *(pair2.first);
+    }
+};
+
+struct K2Comp{
+    bool operator()(const k2Base* key , const k2Base* otherKey ) const
+    {
+        return *(key) < *(otherKey);
+    }
+};
 
 /** vector of pairs of thread and his matching after-mapping vector*/
 PTC execMapVector;
@@ -52,13 +67,13 @@ sem_t shuffleSemaphore;
 std::vector<pthread_mutex_t> mutexVector;
 
 /** the output vector of the shuffle process*/
-std::map<k2Base*,std::vector<v2Base*>> shuffledMap;
+std::map<k2Base*,std::vector<v2Base*>,K2Comp> shuffledMap;
 
 /** final output vector*/
 OUT_ITEMS_VEC outputVector;
 
 /** mutex for the final output vector */
-pthread_mutex_t outputVectorMutex;
+pthread_mutex_t reduceVectorMutex;
 
 std::ofstream myLogFile;
 
@@ -67,6 +82,8 @@ pthread_mutex_t logMutex;
 unsigned int numberOfMappingThreads;
 
 pthread_mutex_t numberOfMappingThreadsMutex;
+
+
 
 /**
  * a struct of resources for the ExecMap objects
@@ -106,6 +123,7 @@ struct ReduceResources{
 	unsigned int shuffledVectorIndex=0;
 
 }ReduceResources;
+
 
 void* mapAll(void*);
 
@@ -198,9 +216,6 @@ void destroyMutex(pthread_mutex_t &mutex){
 	}
 }
 
-bool comparator(OUT_ITEM pair1 , OUT_ITEM pair2){
-	return *(pair1.first) < *(pair2.first);
-}
 
 /**
  * initiating the map threads and the vector which contains the
@@ -242,6 +257,9 @@ void shuffleThreadInit(int numOfThreads) {
  * @param numThread the number of reduce threads to be created
  */
 void reducingThreadsInit(int numThread){
+    createMutex(reduceVectorMutex);
+    lockMutex(reduceVectorMutex);
+
 	createMutex(ReduceResources.shuffledVectorIndexMutex);
     //spawn the new threads and initiate the vector execReduceVector
     for(int i=0;i<numThread;i++){
@@ -252,6 +270,7 @@ void reducingThreadsInit(int numThread){
         execReduceVector.push_back(std::make_pair(newExecReduceThread, newReducingVector));
 
     }
+    unlockMutex(reduceVectorMutex);
 }
 
 /**
@@ -303,7 +322,6 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
     MapResources.inputVector = itemsVec;
     mapReduce = &mapReduceBase;
 
-	createMutex(outputVectorMutex);
 	createMutex(logMutex);
 
 	//lock the pthreadToContainer
@@ -345,16 +363,16 @@ void finalizer(bool autoDeleteV2K2, int numThreads){
 		myLogFile<<"Thread ExecMap terminated "+ getDateAndTime() +"\n";
 		unlockMutex(logMutex);
 
-		pthread_detach(execReduceVector.at(i).first);
+		//pthread_detach(execReduceVector.at(i).first);
 		lockMutex(logMutex);
 		myLogFile<<"Thread ExecReduce terminated "+ getDateAndTime() +"\n";
 		unlockMutex(logMutex);
 	}
 
-	pthread_detach(shuffleThread);
+	//pthread_detach(shuffleThread);
 	sem_destroy(&shuffleSemaphore);
 
-	destroyMutex(outputVectorMutex);
+	destroyMutex(reduceVectorMutex);
 	destroyMutex(numberOfMappingThreadsMutex);
 	destroyMutex(MapResources.pthreadToContainerMutex);
 	destroyMutex(ReduceResources.shuffledVectorIndexMutex);
@@ -392,7 +410,13 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 	//join the reduce pthreads
 	for(unsigned int i=0;i<execReduceVector.size(); i++){
 		pthread_join(execReduceVector.at(i).first,NULL);
+
+        //merge the reduce vector and the output vector
+        auto curReduceVector=execReduceVector.at(i).second;
+        outputVector.reserve( outputVector.size() + curReduceVector.size());
+        outputVector.insert( outputVector.end(), curReduceVector.begin(), curReduceVector.end() );
 	}
+
     finalizer(autoDeleteV2K2, multiThreadLevel);
 
 	afterStatus = gettimeofday(&after, NULL);
@@ -411,7 +435,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 	}
 
 	//sort the output
-	std::sort(outputVector.begin(),outputVector.end(),comparator);
+	std::sort(outputVector.begin(),outputVector.end(),K3Comp());
 	return outputVector;
 }
 
@@ -443,9 +467,7 @@ void Emit3 (k3Base* key, v3Base* value){
 		{
 			auto pair = std::make_pair(key,value);
 
-			lockMutex(outputVectorMutex);
-			outputVector.push_back(pair);
-			unlockMutex(outputVectorMutex);
+            execReduceVector.at(i).second.push_back(pair);
 			break;
 		}
 	}
@@ -511,6 +533,8 @@ void* mapAll(void*)
  * @param value the data that need to append
  */
 void searchingAndInsertingData(k2Base* key, v2Base* value){
+//    NumWrapper *k= (NumWrapper*)key;
+//    NumWrapper *i=(NumWrapper*)value;
 	//search the key
 	auto search = shuffledMap.find(key);
 	//if the key has been found ,append only the value
@@ -592,22 +616,22 @@ void* shuffleAll(void*){
 			shufflingDataFromAContainer(i);
 		}
 	}
-	std::cout<<"shuffle end"<<std::endl;
+	std::cout<<"shuffle end and vector size is " << shuffledMap.size() <<std::endl;
 	return 0;
 }
 
 void reduceCurrentChunck(unsigned int chunkStartingIndex){
     auto iteratingIndex = shuffledMap.begin();
     std::advance(iteratingIndex, chunkStartingIndex);
-	auto c = iteratingIndex->first;
-	auto d = iteratingIndex->second;
-	StringContainers *a= (StringContainers*)iteratingIndex->first;
-	IntegerContainers *b = (IntegerContainers*)iteratingIndex->second.at(0);
+//	auto c = iteratingIndex->first;
+//	auto d = iteratingIndex->second;
+//	StringContainers *a= (StringContainers*)iteratingIndex->first;
+//	IntegerContainers *b = (IntegerContainers*)iteratingIndex->second.at(0);
 
 	// take the minimum so we don't get out of bounds from shuffled vector
 	unsigned int numberOfIterations = std::min(chunkStartingIndex + CHUNK_SIZE,
 								  (unsigned int)shuffledMap.size());
-	for (unsigned int i = 0; i < numberOfIterations; ++i)
+	for (unsigned int i = chunkStartingIndex; i < numberOfIterations; ++i)
 	{
 		mapReduce->Reduce(iteratingIndex->first, iteratingIndex->second);
         ++iteratingIndex;
@@ -616,24 +640,30 @@ void reduceCurrentChunck(unsigned int chunkStartingIndex){
 
 void* reduceAll(void *)
 {
+
 	lockMutex(logMutex);
 	myLogFile<<"Thread ExecReduce created"+ getDateAndTime() +"\n";
 	unlockMutex(logMutex);
+    std::cout<<"reduce begin"<<std::endl;
 
+    lockMutex(reduceVectorMutex);
+    unlockMutex(reduceVectorMutex);
 	unsigned int currentIndex = 0;
 
-	// loop until there are no more pairs to take from input vector
+	// loop until there are no more pairs to t
+    // +ake from input vector
 	while (currentIndex < shuffledMap.size()){
 		// lock shuffledVectorIndex to get the starting index for next chunk to map
 		lockMutex(ReduceResources.shuffledVectorIndexMutex);
 		currentIndex = ReduceResources.shuffledVectorIndex;
 		ReduceResources.shuffledVectorIndex += CHUNK_SIZE;
+        //std::cout<<"current reduce index is " << currentIndex <<std::endl;
 		unlockMutex(ReduceResources.shuffledVectorIndexMutex);
 
 		reduceCurrentChunck(currentIndex);
 		currentIndex += CHUNK_SIZE;
 
 	}
-
+    std::cout<<"reduce end"<<std::endl;
 	return 0;
 }
