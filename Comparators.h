@@ -11,7 +11,8 @@
 /**
  * a functor whom compares k3 by the operator <
  */
-struct K3Comp{
+class K3Comp{
+public:
     bool operator()(const OUT_ITEM pair1 , const OUT_ITEM pair2 ) const
     {
         return *(pair1.first) < *(pair2.first);
@@ -21,7 +22,8 @@ struct K3Comp{
 /**
  * a functor whom compares k2 by the operator <
  */
-struct K2Comp{
+class K2Comp{
+public:
     bool operator()(const k2Base* key , const k2Base* otherKey ) const
     {
         return *(key) < *(otherKey);

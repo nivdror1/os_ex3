@@ -4,5 +4,5 @@ project(os_ex3)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
 set(SOURCE_FILES MapReduceFramework.cpp  MapReduceDerived.cpp StringContainers.cpp
-        IntegerContainers.cpp Search.cpp)
+        IntegerContainers.cpp Search.cpp Comparators.cpp)
 add_executable(os_ex3 ${SOURCE_FILES})
