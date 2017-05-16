@@ -356,7 +356,7 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 }
 
 void clearK2V2Vector(int numThreads){
-    for (unsigned int threadIndex = 0; threadIndex < numThreads; ++threadIndex){
+    for (int threadIndex = 0; threadIndex < numThreads; ++threadIndex){
         MAP_VEC currentVector = execMapVector.at(threadIndex).second;
         for (auto itemsIter = currentVector.begin(); itemsIter != currentVector.end() ; ++itemsIter)
         {
@@ -374,7 +374,7 @@ void finalizer(bool autoDeleteV2K2, int numThreads){
     if (autoDeleteV2K2){
         clearK2V2Vector(numThreads);
     }
-	for(unsigned int i=0;i<numThreads;i++){
+	for(int i=0;i < numThreads;i++){
 		destroyMutex(mutexVector.at(i));
 
 		pthread_detach(execMapVector.at(i).first);
@@ -611,7 +611,7 @@ void shufflingDataFromAContainer(unsigned int i){
  */
 void* shuffleAll(void*){
 
-	std::cout<<"shuffle began"<<std::endl;
+	//std::cout<<"shuffle began"<<std::endl;
 	bool mapStillRunning=true;
 	lockMutex(logMutex);
 	myLogFile<<"Thread shuffle created "+ getDateAndTime() +"\n";
@@ -622,7 +622,7 @@ void* shuffleAll(void*){
 		std::cerr<<"mapReduceFramework failure: sem_wait failed"<<std::endl;
 		exit(1);
 	}
-	std::cout<<"shuffle "<<std::endl;
+	//std::cout<<"shuffle "<<std::endl;
 	while (mapStillRunning) {
 		if(numberOfMappingThreads==0){
 			mapStillRunning = false;
@@ -633,7 +633,7 @@ void* shuffleAll(void*){
 			shufflingDataFromAContainer(i);
 		}
 	}
-	std::cout<<"shuffle end and vector size is " << shuffledMap.size() <<std::endl;
+	//std::cout<<"shuffle end and vector size is " << shuffledMap.size() <<std::endl;
 	return 0;
 }
 
@@ -661,7 +661,7 @@ void* reduceAll(void *)
 	lockMutex(logMutex);
 	myLogFile<<"Thread ExecReduce created"+ getDateAndTime() +"\n";
 	unlockMutex(logMutex);
-    std::cout<<"reduce begin"<<std::endl;
+    //std::cout<<"reduce begin"<<std::endl;
 
     lockMutex(reduceVectorMutex);
     unlockMutex(reduceVectorMutex);
@@ -681,6 +681,6 @@ void* reduceAll(void *)
 		currentIndex += CHUNK_SIZE;
 
 	}
-    std::cout<<"reduce end"<<std::endl;
+    //std::cout<<"reduce end"<<std::endl;
 	return 0;
 }

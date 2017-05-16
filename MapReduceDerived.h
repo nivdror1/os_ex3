@@ -20,6 +20,11 @@ public:
 	 */
     MapReduceDerived();
 
+    /**
+	 * a d-tor
+	 */
+    virtual ~MapReduceDerived() {}
+
 	/**
 	 * opens the folder and classify the files inside the folder
 	 * if they contain the search key by sending them through the function emit2
