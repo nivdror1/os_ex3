@@ -39,7 +39,7 @@ void deleteResources(IN_ITEMS_VEC &inputVector,
 		delete iter->first;
 		delete iter->second;
 	}
-	//delete v2Base
+	//delete v1Base
 	for(unsigned int j=0;j<inputVector.size();j++){
 		delete inputVector.at(j).second;
 	}

@@ -69,8 +69,12 @@ std::ofstream myLogFile;
 /** a mutex for the log file */
 pthread_mutex_t logMutex;
 
+
 /** a counter of the currently running ExecMap threads*/
-unsigned int numberOfMappingThreads;
+int numberOfMappingThreads;
+
+
+
 
 /** a mutex for the counter of the ExecMap currently running*/
 pthread_mutex_t numberOfMappingThreadsMutex;
@@ -159,6 +163,28 @@ void createThread(pthread_t &thread, void * function(void*)){
 }
 
 /**
+ * join a non specific thread
+ * @param thread a thread
+ */
+void joinThread(pthread_t &thread){
+	if (pthread_join(thread, NULL) != 0){
+		std::cerr << "MapReduceFramework Failure: pthread_join failed." << std::endl;
+		exit(1);
+	}
+}
+
+/**
+ * create a non specific thread
+ * @param thread a reference to a thread to be created
+ */
+void detachThread(pthread_t &thread){
+	if(pthread_detach(thread)!=0){
+		std::cerr<<"mapReduceFramework failure: pthread_detach failed"<<std::endl;
+		exit(1);
+	}
+}
+
+/**
  * create a non specific mutex
  * @param mutex a mutex
  */
@@ -202,6 +228,17 @@ void destroyMutex(pthread_mutex_t &mutex){
 	}
 }
 
+/**
+ * check if getTimeOfDay has failed is so exit
+ * @param beforeStatus a return from getTimeOfDay function
+ * @param afterStatus a return from getTimeOfDay function
+ */
+void checkGetTimeOfDayFailure(int &beforeStatus,int &afterStatus){
+	if ((beforeStatus | afterStatus) == -1) { //check for a failure in accessing the time
+		std::cerr << "MapReduceFramework Failure: getTimeOfDay failed." << std::endl;
+		exit(1);
+	}
+}
 
 /**
  * initiating the map threads
@@ -219,13 +256,27 @@ void mappingThreadsInit(int numThread){
         createThread(newExecMapThread,mapAll);
         execMapVector.push_back(std::make_pair(newExecMapThread, newMappingVector));
 
-        // create the mutex for the this ExecMap container and append it to the mutexVector
-        pthread_mutex_t mapContainerMutex;
-	    createMutex(mapContainerMutex);
-        mutexVector.push_back(mapContainerMutex);
     }
-    // create the mutex for the counter of running execMap threads
+
+}
+
+/**
+ * creating the mutexes for the ExecMapThreads
+ * @param numThread the number of threads
+ */
+void creatingExecMapMutexes(int numThread){
+	//create the mutex for the inputVectorIndex,ExecMapVector and
+	// for the counter of running execMap threads
+	createMutex(MapResources.inputVectorIndexMutex);
+	createMutex(MapResources.pthreadToContainerMutex);
 	createMutex(numberOfMappingThreadsMutex);
+
+	for(unsigned int i=0;i<numThread;i++){
+		// create the mutex for the this ExecMap container and append it to the mutexVector
+		pthread_mutex_t mapContainerMutex;
+		createMutex(mapContainerMutex);
+		mutexVector.push_back(mapContainerMutex);
+	}
 }
 
 /**
@@ -269,6 +320,21 @@ void reducingThreadsInit(int numThread){
 }
 
 /**
+ * write a message to the log file
+ * @param message the text to be written
+ */
+void writingToTheLogFile(std:: string message){
+	lockMutex(logMutex);
+	try{
+		myLogFile<<message;
+	}catch (std::ofstream::failure e){
+		std::cerr<<"mapReduceFramework failure: write failed"<<std::endl;
+		exit(1);
+	}
+	unlockMutex(logMutex);
+}
+
+/**
  * creating the log fle
  * @param numThread the number of threads
  */
@@ -277,28 +343,13 @@ void createLogFile(int numThread){
 	myLogFile.exceptions(std::ofstream::failbit|std::ofstream::badbit);
 	try{
 		myLogFile.open(".test"); // todo change the name of the file at the end
-        //todo change to the function writingToTheLogFile
-		myLogFile<<"RunMapReduceFramework started with " <<numThread<<" threads\n";
+		std::string message= "RunMapReduceFramework started with "+std::to_string(numThread)+" threads\n";
+		writingToTheLogFile(message);
 	}
 	catch(std::ofstream::failure e){
 		std::cerr<<"mapReduceFramework failure: open|write failed"<<std::endl;
 		exit(1);
 	}
-}
-
-/**
- * write a message to the log file
- * @param message the text to be written
- */
-void writingToTheLogFile(std:: string message){
-	lockMutex(logMutex);
-    try{
-        myLogFile<<message;
-    }catch (std::ofstream::failure e){
-        std::cerr<<"mapReduceFramework failure: write failed"<<std::endl;
-        exit(1);
-    }
-    unlockMutex(logMutex);
 }
 
 /**
@@ -312,37 +363,57 @@ void closeTheLogFile(){
         exit(1);
     }
 }
+
+/**
+ * creating the semaphore
+ */
+void createSemaphore(){
+	//initiate the semaphore
+	if(sem_init(&shuffleSemaphore,0,0)==-1){
+		std::cerr<<"mapReduceFramework failure: sem_init failed"<<std::endl;
+		exit(1);
+	}
+}
+
+/**
+ * clear map and reduce vectors and clear shuffledMap
+ * and restart the indexes to zero
+ */
+void restartingResources(){
+
+	MapResources.inputVectorIndex=0;
+	ReduceResources.shuffledMapIndex=0;
+
+	ShuffleResources.mapContainerIndex.clear();
+	mutexVector.clear();
+	execMapVector.clear();
+	execReduceVector.clear();
+	shuffledMap.clear();
+}
 /**
  * initiate the threads of the mapping and shuffling, and also initiate the
- * pthreadToContainer
+ * pthreadToContainer.
+ * in addition initiating inputVector, numberOfMappingThreads and the mapReduceBase object
  * @param numThread the number of threads to be create while mapping
  * @param mapReduce an object that contain the map function
  */
 void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
 
 	//creating the log file
-	createLogFile(numThread);
-    outputVector.clear();
-
-	//initiate the semaphore
-	if(sem_init(&shuffleSemaphore,0,0)==-1){
-		std::cerr<<"mapReduceFramework failure: sem_init failed"<<std::endl;
-		exit(1);
-	}
-
-    numberOfMappingThreads = numThread;
-    MapResources.inputVectorIndex=0;
-    ReduceResources.shuffledMapIndex=0;
-
-    ShuffleResources.mapContainerIndex.clear();
-
-	//update  map resources
-	createMutex(MapResources.inputVectorIndexMutex);
-	createMutex(MapResources.pthreadToContainerMutex);
-    MapResources.inputVector = itemsVec;
-    mapReduce = &mapReduceBase;
-
 	createMutex(logMutex);
+	createLogFile(numThread);
+
+    // creating the semaphore
+	createSemaphore();
+
+	//initiating resources
+	MapResources.inputVector = itemsVec;
+	mapReduce = &mapReduceBase;
+	numberOfMappingThreads = numThread;
+	outputVector.clear();
+
+	// creating the mutexes for the ExecMapThreads
+	creatingExecMapMutexes(numThread);
 
 	//lock the pthreadToContainer
 	lockMutex(MapResources.pthreadToContainerMutex);
@@ -355,9 +426,16 @@ void init(int numThread,MapReduceBase& mapReduceBase,IN_ITEMS_VEC& itemsVec){
     unlockMutex(MapResources.pthreadToContainerMutex);
 }
 
-void clearK2V2Vector(int numThreads){
-    for (int threadIndex = 0; threadIndex < numThreads; ++threadIndex){
+/**
+ * pass on the execMapVector and then for each thread index
+ * pass on the container and delete every k2 and v2 objects
+ */
+void clearK2V2Vector(){
+	//pass on execMapVector
+    for (unsigned int threadIndex = 0; threadIndex < execMapVector.size(); ++threadIndex){
+	    //get the current container of the execMapThread
         MAP_VEC currentVector = execMapVector.at(threadIndex).second;
+	    //Pass on the container and delete k2 and v2 objects
         for (auto itemsIter = currentVector.begin(); itemsIter != currentVector.end() ; ++itemsIter)
         {
             delete (*itemsIter).first;
@@ -367,58 +445,101 @@ void clearK2V2Vector(int numThreads){
 }
 
 /**
- * release all the resourses that allocated during the running of RunMapReduceFramework.
- * @param autoDeleteV2K2 if true, release also V2K2 pairs
+ * detach execMapThreads
+ * @param numThreads number of threads to detach
  */
-void finalizer(bool autoDeleteV2K2, int numThreads){
-    if (autoDeleteV2K2){
-        clearK2V2Vector(numThreads);
-    }
-	for(int i=0;i < numThreads;i++){
-		destroyMutex(mutexVector.at(i));
-
-		pthread_detach(execMapVector.at(i).first);
+void detachExecMapThreads(int numThreads){
+	for(unsigned int i=0;i < numThreads;i++){
+		detachThread(execMapVector.at(i).first);
 		writingToTheLogFile("Thread ExecMap terminated "+ getDateAndTime() +"\n");
 	}
+}
 
-    mutexVector.clear();
-    execMapVector.clear();
-    execReduceVector.clear();
-    shuffledMap.clear();
-	//pthread_detach(shuffleThread);
-	sem_destroy(&shuffleSemaphore);
-
+/**
+ * destroy mutexes at the finalizer after the framework has finished working
+ */
+void terminateMutexesAtTheFinalizer(int numMutexes){
 	destroyMutex(reduceVectorMutex);
 	destroyMutex(numberOfMappingThreadsMutex);
 	destroyMutex(MapResources.pthreadToContainerMutex);
 	destroyMutex(ReduceResources.shuffledVectorIndexMutex);
 
+	//destroy for each execMap container it's mutex
+	for(unsigned int i=0;i<numMutexes;i++){
+		destroyMutex(mutexVector.at(i));
+	}
+}
+/**
+ * release all the resourses that allocated during the running of RunMapReduceFramework.
+ * @param autoDeleteV2K2 if true, release also V2K2 pairs
+ */
+void finalizer(bool autoDeleteV2K2, int numThreads){
+	//check if there need to delete k2 and v2 objects is so delete them
+    if (autoDeleteV2K2){
+        clearK2V2Vector();
+    }
+	//detach the execMapThreads
+	detachExecMapThreads(numThreads);
+
+	//clear vectors and zero the index
+    restartingResources();
+
+	//destroy the semaphore
+	sem_destroy(&shuffleSemaphore);
+
+	//destroy the mutexes
+	terminateMutexesAtTheFinalizer(numThreads);
+
 	writingToTheLogFile("RunMapReduceFramework finished\n");
 
 }
+
+/**
+ * initialize the RunMapReduceFramework
+ * In addition run the ExecMapThreads and the shuffle thread
+ * and measure the time that this run takes
+ * @param mapReduce a mapReduceBase object that encapsulates the map and reduce functions
+ * @param itemsVec the input vector
+ * @param multiThreadLevel the number of execMap and ExecReduce threads to create
+ */
+void runMapAndShuffleThreads(int multiThreadLevel,MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec ){
+	struct timeval before, after;
+	int beforeStatus, afterStatus;
+	//get the starting time
+	beforeStatus = gettimeofday(&before, NULL);
+
+	//init the framework
+	init(multiThreadLevel,mapReduce,itemsVec);
+	//join the shuffle thread
+	joinThread(shuffleThread);
+
+	//get the time at the end of the run of map and shuffle
+	afterStatus = gettimeofday(&after, NULL);
+
+	//write the time to the log
+	checkGetTimeOfDayFailure(beforeStatus,afterStatus);
+	double time = conversionToNanoSecond(before,after);
+	std::string text="Map and Shuffle took " + std::to_string(time)+ "ns\n";
+	writingToTheLogFile(text);
+
+}
+
+/**
+ * run the framework i.e run the execMapThreads and the shuffle thread
+ * and after they have finished run the execReduceThreads
+ * at the end merge the reduce containers and sort the output vector
+ * @param mapReduce a mapReduceBase object that encapsulates the map and reduce functions
+ * @param itemsVec the input vector
+ * @param multiThreadLevel the number of execMap and ExecReduce threads to create
+ * @param autoDeleteV2K2 a boolean variable that specify if the framework need to delete the k2 and v2 objects
+ * @return the output vector
+ */
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec,
                                     int multiThreadLevel, bool autoDeleteV2K2){
 	struct timeval before, after;
 	int beforeStatus, afterStatus;
-	beforeStatus = gettimeofday(&before, NULL);
-
-	init(multiThreadLevel,mapReduce,itemsVec);
-
-    if (pthread_join(shuffleThread, NULL) != 0){
-        std::cerr << "MapReduceFramework Failure: pthread_join failed." << std::endl;
-        exit(1);
-    }
-	if ((beforeStatus | afterStatus) == -1) { //check for a failure in accessing the time
-		std::cerr << "MapReduceFramework Failure: getTimeOfDay failed." << std::endl;
-		exit(1);
-	}
-
-	afterStatus = gettimeofday(&after, NULL);
-	double time = conversionToNanoSecond(before,after);
-	std::string timeStr =std::to_string(time);
-	std::string text="Map and Shuffle took " + timeStr+ "ns\n";
-	writingToTheLogFile(text);
+	runMapAndShuffleThreads(multiThreadLevel, mapReduce,itemsVec);
 
 	beforeStatus = gettimeofday(&before, NULL);
 
@@ -441,9 +562,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     finalizer(autoDeleteV2K2, multiThreadLevel);
 
 	afterStatus = gettimeofday(&after, NULL);
-	time = conversionToNanoSecond(before,after);
-	timeStr = std::to_string(time);
-	text="Reduce took " + timeStr+ "ns\n";
+	double time = conversionToNanoSecond(before,after);
+	std::string text="Reduce took " + std::to_string(time)+ "ns\n";
 
 	writingToTheLogFile(text);
 	destroyMutex(logMutex);
