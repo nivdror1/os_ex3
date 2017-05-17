@@ -13,10 +13,7 @@
  */
 class K3Comp{
 public:
-    bool operator()(const OUT_ITEM pair1 , const OUT_ITEM pair2 ) const
-    {
-        return *(pair1.first) < *(pair2.first);
-    }
+    bool operator()(const OUT_ITEM pair1 , const OUT_ITEM pair2 ) const;
 };
 
 /**
@@ -24,9 +21,6 @@ public:
  */
 class K2Comp{
 public:
-    bool operator()(const k2Base* key , const k2Base* otherKey ) const
-    {
-        return *(key) < *(otherKey);
-    }
+    bool operator()(const k2Base* key , const k2Base* otherKey ) const;
 };
 #endif //OS_EX3_COMPARATORS_H

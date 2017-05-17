@@ -499,14 +499,14 @@ void finalizer(bool autoDeleteV2K2, int numThreads){
 	//detach the execMapThreads
 	detachExecMapThreads(numThreads);
 
-	//clear vectors and zero the index
-    restartingResources();
-
 	//destroy the semaphore
 	sem_destroy(&shuffleSemaphore);
 
 	//destroy the mutexes
 	terminateMutexesAtTheFinalizer(numThreads);
+
+	//clear vectors and zero the index
+    restartingResources();
 
 	writingToTheLogFile("RunMapReduceFramework finished\n");
 

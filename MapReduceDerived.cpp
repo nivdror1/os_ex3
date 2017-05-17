@@ -33,7 +33,7 @@ void MapReduceDerived::Map(const k1Base *const key, const v1Base *const val) con
 			std::string fileName= file->d_name;
 			//check if the search key is contained in the file name
 			if(fileName.find(strKey->getData()) != -1){
-				Emit2(new StringContainers(fileName), new IntegerContainers(1));
+				Emit2( new StringContainers(fileName), new IntegerContainers(1));
 			}
 		}
 		closedir(dir); //TODO close the folder? check error
