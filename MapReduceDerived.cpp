@@ -32,14 +32,17 @@ void MapReduceDerived::Map(const k1Base *const key, const v1Base *const val) con
 		while((file=readdir(dir))!=NULL){
 			std::string fileName= file->d_name;
 			//check if the search key is contained in the file name
-			if(fileName.find(strKey->getData()) != -1){
+			if(fileName.find(strKey->getData()) != std::string::npos){
 				Emit2( new StringContainers(fileName), new IntegerContainers(1));
 			}
 		}
-		closedir(dir); //TODO close the folder? check error
+		if(closedir(dir)==-1){
+			std::cerr<<"System call error: could not close the directory"<<std::endl;
+			exit(1);
+		}
 	}else{
-		//TODO close the folder ?
 		std::cerr<<"System call error: could not open the directory"<<std::endl;
+		exit(1);
 	}
 }
 

@@ -64,7 +64,10 @@ void isDirectory(IN_ITEMS_VEC &inputVector, StringContainers *keyWord,char* path
 											  new StringContainers(paths[i])));
 			}
 		}
-		//todo i'm not sure if there shouldn't be error message
+		else{
+			std::cerr<<"mapReduceFramework failure: stat failed"<<std::endl;
+			exit(1);
+		}
 	}
 }
 
@@ -82,7 +85,7 @@ int main(int argc,char* argv[]){
     isDirectory(inputVector,keyWord,argv,argc);
 
     //use the MapReduceFramework
-	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,inputVector.size(),true);
+	OUT_ITEMS_VEC outputVector = RunMapReduceFramework(*(worker),inputVector,10 ,true);
 
 	printResults(outputVector);
     //delete the resources

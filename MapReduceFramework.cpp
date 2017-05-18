@@ -71,9 +71,6 @@ pthread_mutex_t logMutex;
 /** a counter of the currently running ExecMap threads*/
 int numberOfMappingThreads;
 
-
-
-
 /** a mutex for the counter of the ExecMap currently running*/
 pthread_mutex_t numberOfMappingThreadsMutex;
 
@@ -289,7 +286,7 @@ void creatingExecMapMutexes(int numThread){
 	createMutex(MapResources.pthreadToContainerMutex);
 	createMutex(numberOfMappingThreadsMutex);
 
-	for(unsigned int i=0;i<numThread;i++){
+	for(int i=0;i<numThread;i++){
 		// create the mutex for the this ExecMap container and append it to the mutexVector
 		pthread_mutex_t mapContainerMutex;
 		createMutex(mapContainerMutex);
@@ -467,7 +464,7 @@ void clearK2V2Vector(){
  * @param numThreads number of threads to detach
  */
 void detachExecMapThreads(int numThreads){
-	for(unsigned int i=0;i < numThreads;i++){
+	for(int i=0;i < numThreads;i++){
 		detachThread(execMapVector.at(i).first);
 		writingToTheLogFile("Thread ExecMap terminated "+ getDateAndTime() +"\n");
 	}
@@ -483,8 +480,8 @@ void terminateMutexesAtTheFinalizer(int numMutexes){
 	destroyMutex(ReduceResources.shuffledVectorIndexMutex);
 
 	//destroy for each execMap container it's mutex
-	for(unsigned int i=0;i<numMutexes;i++){
-		destroyMutex(mutexVector.at(i));
+	for(int i=0;i<numMutexes;i++){
+		destroyMutex(mutexVector[i]);
 	}
 }
 /**
@@ -582,6 +579,7 @@ double runReduceThreads(int multiThreadLevel,bool autoDeleteV2K2){ //todo maybe 
     //sort the output
     std::sort(outputVector.begin(),outputVector.end(),K3Comp());
 
+	destroyMutex(logMutex);
     afterStatus = gettimeofday(&after, NULL);
     checkGetTimeOfDayFailure(beforeStatus, afterStatus);
 
@@ -609,7 +607,6 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 	double timeReduce = runReduceThreads(multiThreadLevel,autoDeleteV2K2);
     writingToTheLogFile("Reduce took " + std::to_string(timeReduce)+ "ns\n");
 
-	destroyMutex(logMutex);
 	closeTheLogFile();
 
 	return outputVector;

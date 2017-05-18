@@ -1,33 +1,60 @@
--- OS 2017 - ex 3 test suite --
-By Jona Harris
+nivdror1, ido.shachar
+niv dror (305498198), Ido Shachar (311248355)
+EX: 3
+
+FILES:
+StringContainers.cpp
+StringContainers.h
+IntegerContainers.cpp
+StringContainers.h
+Comparators.h
+Comparators.cpp
+MapReduceDerived.cpp
+MapReduceDerived.h
+Search.cpp
+MapReduceFramework.cpp
+README
+Makefile
+
+REMARKS:
+These are some remarks that
+I want the graders to know
+about this submission.
+
+ANSWERS:
+
+4) When a parent process perform a fork operation he duplicates the process
+   so from now on the child process differ from the parent.
+
+   each user level thread or kernel level thread  that was created
+   owns a stack and share the global variables
+   and the heap with the parent thread.
 
 
-The suite depends on 2 files: your library file 'MapReduceFramework.a' and your compiled program 'Search'
-
-Steps:
-
-- Place 'MapReduceFramework.a' inside the 'Framework' directory.
-- Place 'Search' inside the 'Test_496' directory.
-- run 'compile_suite' to compile all tests.
-- run 'run_suite' to run the tests sequentially.
+5) A deadlock - a situation in which two or more processes are unable to proceed because
+ each one is waiting for one the others to unlock the resource and let it gain access.
 
 
+   A livelock - a situation in which two or more processes are unable to proceed because
+   each one will try to respond to the other continuously without progression possibility.
 
-Test 6:
-A description of the test is inside the Test_6 directory.
-The test is being run with 3 different inputs of different difficulty levels (grid5, grid25, grid125).
+   example for deadlock  -
+   let there be two threads called t1,t2, and two mutexes called m1,m2
+   t1 lock the m1 while t2 lock m2 and then each thread tries get a lock on the other mutex.
 
+   example for livelock - let there be two thread t1, t2 and two boolean variables b1,b2 initialize to true
+   the process goes as follows while each thread run a single operation at a run :
 
-Test 28:
-Finding words frequencies in a text. There are 3 text files as inputs for the test.
+   t1:
+        while(b2){
+            b1=false
+            b1=true
+        }
+        b1=false
 
-
-Test 496:
-Test for the Search program. There are two inputs for this test - light_data and heavy_data (whose names suggest about their difficulty).
-There are 2 additional scripts in Test_496:
-'runValgrind' - run the test on both inputs using valgrind and write valgrind's log to two files valgrind_light.out and valgrind_heavy.out
-'stress' - run the test many times in a loop (may be good to check there aren't any concurrency problems)
-
-
-
-Have fun...
+   t2:
+        while(b1){
+            b2=false
+            b2=true
+        }
+        b2=false
