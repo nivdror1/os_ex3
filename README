@@ -23,6 +23,51 @@ about this submission.
 
 ANSWERS:
 
+1) let numberOfMappingThreads be a global variable that initialize to N
+   each ExecMap reduces the count by one at the of the thread run.
+
+   the conditional variable and the mutex are global variables.
+
+shuffle:
+ mapStillRunning=true
+ while (mapStillRunning) {
+
+    lock(shuffleMutex)
+    int cvTime= pthread_cond_timedwait(&cv,&shuffleMutex)
+    unlock(shuffleMutex)
+
+    // if there no more execMap threads running
+    if(numberOfMappingThreads==0&& cvTime==ETIMEDOUT){
+        mapStillRunning = false;
+    }else if (cvTime!=ETIMEDOUT && cvTime!=0){
+        exit(1)
+    }
+    go through the ExecMap containers and shuffled them
+}
+
+Emit2:
+
+  //get the thread id
+	pthread_t currentThreadId = pthread_self();
+    //search for the same thread id
+	go through the pthreadToContainer and search for the thread id
+
+    lock the correct mutex append the pair to thew container and then unlock it
+
+    lock(shuffleMutex)
+    pthread_cond_signal(&cv,&shuffleMutex)
+    unlock(shuffleMutex)
+
+
+explanation on pthread_cond_timedwait:
+
+On the extreme scenario on which no ExecMap thread is calling the function Emit2
+we have produce an algorithm that will wake the shuffle thread on after a specific time.
+And therefore the shuffle won't wait forever. However if we have used pthread_cond_wait
+there is no guarantee that the shuffle will finish his function.
+
+2)
+
 4) When a parent process perform a fork operation he duplicates the process
    so from now on the child process differ from the parent.
 
